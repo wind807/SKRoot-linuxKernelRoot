@@ -1376,34 +1376,127 @@ void SearchFeature1(char* image, size_t size) {
 	printf_head_result_map(result_map);
 }
 
+
 void SearchFeature2(const char* image, size_t image_size) {
 	char feature_text_outofrange[40] = {
 	0x01, 0x33, 0x53, 0x45, 0x4C, 0x69, 0x6E, 0x75, 0x78, 0x3A, 0x20, 0x20, 0x6F, 0x75, 0x74, 0x20,
 	0x6F, 0x66, 0x20, 0x72, 0x61, 0x6E, 0x67, 0x65, 0x20, 0x63, 0x61, 0x70, 0x61, 0x62, 0x69, 0x6C,
 	0x69, 0x74, 0x79, 0x20, 0x25, 0x64, 0x0A, 0x00
 	};
+	char feature_text_keycreate[] = {
+	'\0', 'k', 'e', 'y', 'c', 'r', 'e', 'a', 't', 'e', '\0'
+	};
+	char feature_text_opfscreateinvalidcontext[] = {
+	'\0', 'o', 'p', '=', 'f', 's', 'c', 'r', 'e', 'a', 't', 'e', ' ', 'i', 'n', 'v', 'a', 'l', 'i', 'd', '_', 'c', 'o', 'n', 't', 'e', 'x', 't', '=', '\0'
+	};
+	char feature_text_auidseslsmselinuxres[] = {
+	"auid=%u ses=%u lsm=selinux res=1"
+	};
+
+	char feature_text_failedtoloadpolicy[34] = {
+	0x01, 0x34, 0x53, 0x45, 0x4C, 0x69, 0x6E, 0x75, 0x78, 0x3A, 0x20, 0x66, 0x61, 0x69, 0x6C, 0x65,
+	0x64, 0x20, 0x74, 0x6F, 0x20, 0x6C, 0x6F, 0x61, 0x64, 0x20, 0x70, 0x6F, 0x6C, 0x69, 0x63, 0x79, 0x0A, 0x00
+	};
+
+	char feature_text_contextsizeexceedspayloadmax[55] = {
+	0x01, 0x33, 0x53, 0x45, 0x4C, 0x69, 0x6E, 0x75, 0x78, 0x3A, 0x20, 0x25, 0x73, 0x3A, 0x20, 0x20,
+	0x63, 0x6F, 0x6E, 0x74, 0x65, 0x78, 0x74, 0x20, 0x73, 0x69, 0x7A, 0x65, 0x20, 0x28, 0x25, 0x75,
+	0x29, 0x20, 0x65, 0x78, 0x63, 0x65, 0x65, 0x64, 0x73, 0x20, 0x70, 0x61, 0x79, 0x6C, 0x6F, 0x61,
+	0x64, 0x20, 0x6D, 0x61, 0x78, 0x0A, 0x00
+	};
+
+	char feature_text_sshus[] = {
+		"%s %s %hu %s"
+	};
+	char feature_text_xxxxux[] = {
+		"%x %x %x %x %u %x"
+	};
 	size_t outofrange_text_offset = 0;
+	size_t keycreate_text_offset = 0;
+	size_t opfscreateinvalidcontext_text_offset = 0;
+	size_t auidseslsmselinuxres_text_offset = 0;
+	size_t failedtoloadpolicy_text_offset = 0;
+	size_t contextsizeexceedspayloadmax_text_offset = 0;
+	size_t sshus_text_offset = 0;
+	size_t xxxux_text_offset = 0;
 
 	for (size_t offset = 0; offset < image_size; offset++) {
 		const char* paddr = image + offset;
-		if ((image_size - offset) >= sizeof(feature_text_outofrange)) {
-			if (outofrange_text_offset == 0 && memcmp(paddr, &feature_text_outofrange, sizeof(feature_text_outofrange)) == 0) {
-				printf("SELinux: out of range text->0x%p\n", (void*)offset);
+		if (outofrange_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_outofrange)) {
+			if (memcmp(paddr, &feature_text_outofrange, sizeof(feature_text_outofrange)) == 0) {
+				printf("SELinux: out of range text->0x%llx\n", (void*)offset);
 				outofrange_text_offset = offset;
-				break;
+			}
+		}
+		if (keycreate_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_keycreate)) {
+			if (memcmp(paddr, &feature_text_keycreate, sizeof(feature_text_keycreate)) == 0) {
+				printf("keycreate text->0x%llx\n", (void*)offset);
+				keycreate_text_offset = offset;
+			}
+		}
+		if (opfscreateinvalidcontext_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_opfscreateinvalidcontext)) {
+			if (memcmp(paddr, &feature_text_opfscreateinvalidcontext, sizeof(feature_text_opfscreateinvalidcontext)) == 0) {
+				printf("opfscreateinvalidcontext text->0x%llx\n", (void*)offset);
+				opfscreateinvalidcontext_text_offset = offset;
+			}
+		}
+		if (auidseslsmselinuxres_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_auidseslsmselinuxres)) {
+			if (memcmp(paddr, &feature_text_auidseslsmselinuxres, sizeof(feature_text_auidseslsmselinuxres)) == 0) {
+				printf("auidseslsmselinuxres text->0x%llx\n", (void*)offset);
+				auidseslsmselinuxres_text_offset = offset;
+			}
+		}
+		if (failedtoloadpolicy_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_failedtoloadpolicy)) {
+			if (memcmp(paddr, &feature_text_failedtoloadpolicy, sizeof(feature_text_failedtoloadpolicy)) == 0) {
+				printf("failedtoloadpolicy text->0x%llx\n", (void*)offset);
+				failedtoloadpolicy_text_offset = offset;
+			}
+		}
+		if (contextsizeexceedspayloadmax_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_contextsizeexceedspayloadmax)) {
+			if (memcmp(paddr, &feature_text_contextsizeexceedspayloadmax, sizeof(feature_text_contextsizeexceedspayloadmax)) == 0) {
+				printf("contextsizeexceedspayloadmax text->0x%llx\n", (void*)offset);
+				contextsizeexceedspayloadmax_text_offset = offset;
+			}
+		}
+		if (sshus_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_sshus)) {
+			if (memcmp(paddr, &feature_text_sshus, sizeof(feature_text_sshus)) == 0) {
+				printf("contextsizeexceedspayloadmax text->0x%llx\n", (void*)offset);
+				sshus_text_offset = offset;
+			}
+		}
+		if (xxxux_text_offset == 0 && (image_size - offset) >= sizeof(feature_text_xxxxux)) {
+			if (memcmp(paddr, &feature_text_xxxxux, sizeof(feature_text_xxxxux)) == 0) {
+				printf("xxxux text->0x%llx\n", (void*)offset);
+				xxxux_text_offset = offset;
 			}
 		}
 	}
-	if (!outofrange_text_offset) {
+	
+	printf("\n");
+
+	std::map<std::tuple<std::string, size_t>, std::shared_ptr<std::vector<xrefs_info>>> result_map;
+	result_map[{"[cred_has_capability]", outofrange_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	result_map[{"[selinux_getprocattr/selinux_setprocattr]", keycreate_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	result_map[{"[selinux_setprocattr]", opfscreateinvalidcontext_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	result_map[{"[sel_write_load]", auidseslsmselinuxres_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	result_map[{"[sel_write_load]", failedtoloadpolicy_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	result_map[{"[sel_write_context/sel_write_create]", contextsizeexceedspayloadmax_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	result_map[{"[sel_write_validatetrans/sel_write_create]", sshus_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	result_map[{"[sel_write_access]", xxxux_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
+	for (auto iter = result_map.begin(); iter != result_map.end();) {
+		if (std::get<1>(iter->first) == 0) {
+			iter = result_map.erase(iter);
+		} else {
+			iter++;
+		}
+	}
+	if (result_map.size() == 0) {
 		printf("[ERROR] text offset empty.\n");
 		return;
 	}
-	std::map<std::tuple<std::string, size_t>, std::shared_ptr<std::vector<xrefs_info>>> result_map;
-	result_map[{"cred_has_capability function", outofrange_text_offset}] = std::make_shared<std::vector<xrefs_info>>();
 	find_xrefs_link((const char*)image, image_size, result_map);
 	printf_xrefs_result_map(result_map);
 }
-
 
 int main(int argc, char* argv[]) {
 	char* inimage = argv[0];
