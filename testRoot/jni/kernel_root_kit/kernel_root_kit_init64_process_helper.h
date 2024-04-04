@@ -1,9 +1,8 @@
-﻿#ifndef INIT64_HELPER_H_
-#define INIT64_HELPER_H_
+﻿#ifndef _KERNEL_ROOT_KIT_INIT64_HELPER_H_
+#define _KERNEL_ROOT_KIT_INIT64_HELPER_H_
 #include <unistd.h>
 #include <thread>
 #include <atomic>
-#include "kernel_root_kit_random.h"
 #include "kernel_root_kit_process64_inject.h"
 #include "kernel_root_kit_process_cmdline_utils.h"
 
@@ -37,8 +36,8 @@ static std::string safe_run_init64_cmd_wrapper(
 			str_root_key,
 			cmd,
 			out_err);
-		write_errcode_to_father(finfo, out_err);
-		write_string_to_father(finfo, str_cmd_result);
+		write_errcode_from_child(finfo, out_err);
+		write_string_from_child(finfo, str_cmd_result);
 		_exit(0);
 		return {};
 	}
@@ -56,4 +55,4 @@ static std::string safe_run_init64_cmd_wrapper(
 	return str_cmd_result;
 }
 }
-#endif /* INIT64_HELPER_H_ */
+#endif /* _KERNEL_ROOT_KIT_INIT64_HELPER_H_ */

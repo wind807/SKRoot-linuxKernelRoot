@@ -21,6 +21,7 @@ namespace kernel_root {
 
 	//获取ROOT权限，返回值为0则代表成功
 	static inline ssize_t get_root(const char* str_root_key) {
+		if(getuid() == 0) { return 0; }
 		if (str_root_key == NULL) { return -100; }
 		syscall(__NR_execve, str_root_key, NULL, NULL);
 		if(getuid() != 0) { return -101; }
@@ -83,8 +84,8 @@ namespace kernel_root {
 				}
 				pclose(fp);
 			} while(0);
-			write_errcode_to_father(finfo, err);
-			write_string_to_father(finfo, result);
+			write_errcode_from_child(finfo, err);
+			write_string_from_child(finfo, result);
 			_exit(0);
 			return 0;
 		}

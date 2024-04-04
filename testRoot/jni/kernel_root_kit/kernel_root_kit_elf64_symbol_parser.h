@@ -1,17 +1,25 @@
-﻿#ifndef SO_SYMBOL_PARSER_H_
-#define SO_SYMBOL_PARSER_H_
+﻿#ifndef _KERNEL_ROOT_KIT_SO_SYMBOL_PARSER_H_
+#define _KERNEL_ROOT_KIT_SO_SYMBOL_PARSER_H_
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <elf.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 #include <iostream>
 #include <sys/mman.h>
 #include <map>
 #include <vector>
 #include <errno.h>
 namespace kernel_root {
+	
+struct dl_iterate_callback_data {
+    const char *target_so_name;
+    std::shared_ptr<std::map<std::string, uint64_t>> sp_func_symbol_map;
+};
+
+
 static bool is_elf64_file(int fd) {
 	Elf64_Ehdr elf;
 	int r = read(fd, &elf, sizeof(elf));
@@ -29,7 +37,7 @@ static bool is_elf64_file(int fd) {
 	return false;
 }
 
-static int get_so_symbol_addr(const char* so_path, std::map<std::string, uint64_t>& funcSymbolMap) {
+static int read_elf64_file_symbol_addr(const char* so_path, std::map<std::string, uint64_t>& func_symbol_map) {
 	int fd;
 	char* mod;
 	unsigned int size, i, j, shn, n;
@@ -71,11 +79,12 @@ static int get_so_symbol_addr(const char* so_path, std::map<std::string, uint64_
 				if (stype == STT_FUNC && sbind == STB_GLOBAL &&
 					sym->st_other == STV_DEFAULT &&
 					(uintmax_t)sym->st_size > 0) {
-
-					if (funcSymbolMap.find(strtab + sym->st_name) == funcSymbolMap.end()) {
+					
+					auto iter = func_symbol_map.find(strtab + sym->st_name);
+					if (iter == func_symbol_map.end()) {
 						continue;
 					}
-					funcSymbolMap[strtab + sym->st_name] = sym->st_value;
+					iter->second = sym->st_value;
 				}
 			}
 		}
@@ -84,5 +93,22 @@ static int get_so_symbol_addr(const char* so_path, std::map<std::string, uint64_
 	close(fd);
 	return 0;
 }
+
+int find_mem_elf64_symbol_address(const char *so_path, std::map<std::string, uint64_t>& func_symbol_map) {
+    void* p_so_addr = get_module_base(-1, so_path);
+	void* p_so = dlopen(so_path, RTLD_NOW | RTLD_GLOBAL);
+	if (!p_so || !p_so_addr) {
+		return -3000001;
+	}
+	for(auto iter = func_symbol_map.begin(); iter != func_symbol_map.end(); iter++) {
+		void* pfunc = dlsym(p_so, iter->first.c_str());
+		if(pfunc) {
+			iter->second = ((size_t)pfunc - (size_t)p_so_addr);
+		}
+	}
+	dlclose(p_so);
+	return 0;
 }
-#endif /* SO_SYMBOL_PARSER_H_ */
+
+}
+#endif /* _KERNEL_ROOT_KIT_SO_SYMBOL_PARSER_H_ */

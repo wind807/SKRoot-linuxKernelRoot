@@ -19,13 +19,14 @@
 #include "kernel_root_kit_ptrace_arm64_utils.h"
 #include "kernel_root_kit_maps_helper.h"
 #include "kernel_root_kit_command.h"
-#include "kernel_root_kit_so_symbol_parser.h"
+#include "kernel_root_kit_elf64_symbol_parser.h"
 #include "kernel_root_kit_log.h"
 
 namespace kernel_root {
 
-int safe_load_libc64_run_cmd_func_addr(
+int _load_libc64_run_cmd_func_addr(
 	const char* so_path,
+	api_offset_read_mode api_mode,
 	size_t& p_mmap_offset,
 	size_t& p_munmap_offset,
 	size_t& p_chdir_offset,
@@ -37,178 +38,84 @@ int safe_load_libc64_run_cmd_func_addr(
 	size_t& p_pclose_offset,
 	size_t& p_read_offset) {
 
+	int ret = 0;
+	std::map<std::string, uint64_t> func_symbol_map;
+	func_symbol_map["mmap"] = 0;
+	func_symbol_map["munmap"] = 0;
+	func_symbol_map["chdir"] = 0;
+	func_symbol_map["clearenv"] = 0;
+	func_symbol_map["setenv"] = 0;
+	func_symbol_map["execve"] = 0;
+	func_symbol_map["fileno"] = 0;
+	func_symbol_map["popen"] = 0;
+	func_symbol_map["pclose"] = 0;
+	func_symbol_map["read"] = 0;
 
-	void* p_so_addr = get_module_base(-1, so_path);
-	if (p_so_addr) {
-		ROOT_PRINTF("myself have this so.\n");
-		//自身有这个so
-		void* p_so = dlopen(so_path, RTLD_NOW | RTLD_GLOBAL);
-		if (p_so) {
-			void* p_mmap = dlsym(p_so, "mmap");
-			void* p_munmap = dlsym(p_so, "munmap");
-			void* p_chdir = dlsym(p_so, "chdir");
-			void* p_clearenv = dlsym(p_so, "clearenv");
-			void* p_setenv = dlsym(p_so, "setenv");
-			void* p_execve = dlsym(p_so, "execve");
-			void* p_fileno = dlsym(p_so, "fileno");
-			void* p_popen = dlsym(p_so, "popen");
-			void* p_pclose = dlsym(p_so, "pclose");
-			void* p_read = dlsym(p_so, "read");
-			dlclose(p_so);
-			p_chdir_offset = p_chdir ? ((size_t)p_chdir - (size_t)p_so_addr) : 0;
-			p_clearenv_offset = p_clearenv ? ((size_t)p_clearenv - (size_t)p_so_addr) : 0;
-			p_setenv_offset = p_setenv ? ((size_t)p_setenv - (size_t)p_so_addr) : 0;
-			if (p_mmap && p_munmap && p_execve && p_fileno && p_popen && p_pclose && p_read) {
-				p_mmap_offset = ((size_t)p_mmap - (size_t)p_so_addr);
-				p_munmap_offset = ((size_t)p_munmap - (size_t)p_so_addr);
-				p_execve_offset = ((size_t)p_execve - (size_t)p_so_addr);
-				p_fileno_offset = ((size_t)p_fileno - (size_t)p_so_addr);
-				p_popen_offset = ((size_t)p_popen - (size_t)p_so_addr);
-				p_pclose_offset = ((size_t)p_pclose - (size_t)p_so_addr);
-				p_read_offset = ((size_t)p_read - (size_t)p_so_addr);
-				return 0;
-
+	do {
+		if(api_mode == api_offset_read_mode::only_read_myself_mem || api_mode == api_offset_read_mode::all) {
+			bool is_already_loaded = !!get_module_base(-1, so_path);
+			if (is_already_loaded) {
+				ROOT_PRINTF("myself have this so.\n");
+				ret = find_mem_elf64_symbol_address(so_path, func_symbol_map);
+				break;
 			}
 		}
-	}
-	//自身没这个so
-
-	std::map<std::string, uint64_t> funcSymbolMap;
-	funcSymbolMap["mmap"] = 0;
-	funcSymbolMap["munmap"] = 0;
-	funcSymbolMap["chdir"] = 0;
-	funcSymbolMap["clearenv"] = 0;
-	funcSymbolMap["setenv"] = 0;
-	funcSymbolMap["execve"] = 0;
-	funcSymbolMap["fileno"] = 0;
-	funcSymbolMap["popen"] = 0;
-	funcSymbolMap["pclose"] = 0;
-	funcSymbolMap["read"] = 0;
-	int ret = get_so_symbol_addr(so_path, funcSymbolMap);
-	p_mmap_offset = funcSymbolMap["mmap"];
-	p_munmap_offset = funcSymbolMap["munmap"];
-	p_chdir_offset = funcSymbolMap["chdir"];
-	p_clearenv_offset = funcSymbolMap["clearenv"];
-	p_setenv_offset = funcSymbolMap["setenv"];
-	p_execve_offset = funcSymbolMap["execve"];
-	p_fileno_offset = funcSymbolMap["fileno"];
-	p_popen_offset = funcSymbolMap["popen"];
-	p_pclose_offset = funcSymbolMap["pclose"];
-	p_read_offset = funcSymbolMap["read"];
+		if(api_mode == api_offset_read_mode::only_read_file || api_mode == api_offset_read_mode::all) {
+			ret = read_elf64_file_symbol_addr(so_path, func_symbol_map);
+			break;
+		}
+	} while (0);
+	
+	p_mmap_offset = func_symbol_map["mmap"];
+	p_munmap_offset = func_symbol_map["munmap"];
+	p_chdir_offset = func_symbol_map["chdir"];
+	p_clearenv_offset = func_symbol_map["clearenv"];
+	p_setenv_offset = func_symbol_map["setenv"];
+	p_execve_offset = func_symbol_map["execve"];
+	p_fileno_offset = func_symbol_map["fileno"];
+	p_popen_offset = func_symbol_map["popen"];
+	p_pclose_offset = func_symbol_map["pclose"];
+	p_read_offset = func_symbol_map["read"];
 	return ret;
 }
 
-int safe_load_libc64_so_inject_func_addr(
-	const char* so_path,
-	size_t& p_dlopen_offset,
-	size_t& p_dlsym_offset,
-	size_t& p_mmap_offset,
-	size_t& p_munmap_offset) {
-
-
-	void* p_so_addr = get_module_base(-1, so_path);
-	if (p_so_addr) {
-		//自身有这个so
-		void* p_so = dlopen(so_path, RTLD_NOW | RTLD_GLOBAL);
-		if (p_so) {
-			void* p_dlopen = dlsym(p_so, "dlopen");
-			void* p_dlsym = dlsym(p_so, "dlsym");
-			void* p_mmap = dlsym(p_so, "mmap");
-			void* p_munmap = dlsym(p_so, "munmap");
-			dlclose(p_so);
-			if (p_dlopen && p_dlsym && p_mmap && p_munmap) {
-				p_dlopen_offset = ((size_t)p_dlopen - (size_t)p_so_addr);
-				p_dlsym_offset = ((size_t)p_dlsym - (size_t)p_so_addr);
-				p_mmap_offset = ((size_t)p_mmap - (size_t)p_so_addr);
-				p_munmap_offset = ((size_t)p_munmap - (size_t)p_so_addr);
-				return 0;
-
-			}
-		}
-	}
-
-	std::map<std::string, uint64_t> funcSymbolMap;
-	funcSymbolMap["dlopen"] = 0;
-	funcSymbolMap["dlsym"] = 0;
-	funcSymbolMap["mmap"] = 0;
-	funcSymbolMap["munmap"] = 0;
-	int ret = get_so_symbol_addr(so_path, funcSymbolMap);
-	p_dlopen_offset = funcSymbolMap["dlopen"];
-	p_dlsym_offset = funcSymbolMap["dlsym"];
-	p_mmap_offset = funcSymbolMap["mmap"];
-	p_munmap_offset = funcSymbolMap["munmap"];
-	return ret;
-}
-
-int safe_load_libc64_modify_env_func_addr(
+int _load_libc64_modify_env_func_addr(
 	const char* str_root_key,
 	const char* so_path,
+	api_offset_read_mode api_mode,
 	size_t& p_mmap_offset,
 	size_t& p_munmap_offset,
 	size_t& p_getenv_offset,
 	size_t& p_setenv_offset) {
 
-	void* p_so_addr = get_module_base(-1, so_path);
-	if (p_so_addr) {
-		//自身有这个so
-		void* p_so = dlopen(so_path, RTLD_NOW | RTLD_GLOBAL);
-		if (p_so) {
-			void* p_mmap = dlsym(p_so, "mmap");
-			void* p_munmap = dlsym(p_so, "munmap");
-			void* p_getenv = dlsym(p_so, "getenv");
-			void* p_setenv = dlsym(p_so, "setenv");
-			dlclose(p_so);
-			if (p_mmap && p_munmap && p_getenv && p_setenv) {
-				p_mmap_offset = ((size_t)p_mmap - (size_t)p_so_addr);
-				p_munmap_offset = ((size_t)p_munmap - (size_t)p_so_addr);
-				p_getenv_offset = ((size_t)p_getenv - (size_t)p_so_addr);
-				p_setenv_offset = ((size_t)p_setenv - (size_t)p_so_addr);
-				return 0;
+	int ret = 0;
+	std::map<std::string, uint64_t> func_symbol_map;
+	func_symbol_map["getenv"] = 0;
+	func_symbol_map["setenv"] = 0;
+	func_symbol_map["mmap"] = 0;
+	func_symbol_map["munmap"] = 0;
 
+	do {
+		if(api_mode == api_offset_read_mode::only_read_myself_mem || api_mode == api_offset_read_mode::all) {
+			bool is_already_loaded = !!get_module_base(-1, so_path);
+			if (is_already_loaded) {
+				ROOT_PRINTF("myself have this so.\n");
+				ret = find_mem_elf64_symbol_address(so_path, func_symbol_map);
+				break;
 			}
 		}
-	}
-
-	std::map<std::string, uint64_t> funcSymbolMap;
-	funcSymbolMap["getenv"] = 0;
-	funcSymbolMap["setenv"] = 0;
-	funcSymbolMap["mmap"] = 0;
-	funcSymbolMap["munmap"] = 0;
-	int ret = get_so_symbol_addr(so_path, funcSymbolMap);
-	p_mmap_offset = funcSymbolMap["mmap"];
-	p_munmap_offset = funcSymbolMap["munmap"];
-	p_getenv_offset = funcSymbolMap["getenv"];
-	p_setenv_offset = funcSymbolMap["setenv"];
-	return ret;
-}
-
-int safe_load_libc64_exit_func_addr(
-	const char* str_root_key,
-	const char* so_path,
-	size_t& p_exit_offset) {
-
-	void* p_so_addr = get_module_base(-1, so_path);
-	if (p_so_addr) {
-		//自身有这个so
-		void* p_so = dlopen(so_path, RTLD_NOW | RTLD_GLOBAL);
-		if (p_so) {
-			void* p_exit = dlsym(p_so, "_exit");
-			dlclose(p_so);
-			if (p_exit) {
-				p_exit_offset = ((size_t)p_exit - (size_t)p_so_addr);
-				return 0;
-
-			}
+		if(api_mode == api_offset_read_mode::only_read_file || api_mode == api_offset_read_mode::all) {
+			ret = read_elf64_file_symbol_addr(so_path, func_symbol_map);
+			break;
 		}
-	}
-
-	std::map<std::string, uint64_t> funcSymbolMap;
-	funcSymbolMap["_exit"] = 0;
-	int ret = get_so_symbol_addr(so_path, funcSymbolMap);
-	p_exit_offset = funcSymbolMap["_exit"];
+	} while (0);
+	
+	p_mmap_offset = func_symbol_map["mmap"];
+	p_munmap_offset = func_symbol_map["munmap"];
+	p_getenv_offset = func_symbol_map["getenv"];
+	p_setenv_offset = func_symbol_map["setenv"];
 	return ret;
 }
-
 
 //远程注入  
 std::string inject_process64_run_cmd(
@@ -832,7 +739,8 @@ std::string inject_process64_run_cmd_wrapper(
 	bool user_root_auth/* = true*/,
 	const char* chdir_path /*= NULL*/,
 	bool clear_env/* = false*/,
-	std::vector<process64_env>* set_env /* = NULL*/) {
+	std::vector<process64_env>* set_env /* = NULL*/,
+	api_offset_read_mode api_mode /* = api_offset_read_mode::all*/) {
 	out_err = 0;
 	if (target_pid <= 0) {
 		out_err = -240;
@@ -862,8 +770,9 @@ std::string inject_process64_run_cmd_wrapper(
 	size_t p_popen_offset;
 	size_t p_pclose_offset;
 	size_t p_read_offset;
-	int r = safe_load_libc64_run_cmd_func_addr(
+	int r = _load_libc64_run_cmd_func_addr(
 		target_process_libc_so_path.c_str(),
+		api_mode,
 		p_mmap_offset,
 		p_munmap_offset,
 		p_chdir_offset,
@@ -876,7 +785,7 @@ std::string inject_process64_run_cmd_wrapper(
 		p_read_offset);
 
 	if (r != 0) {
-		ROOT_PRINTF("safe_load_libc64_run_cmd_func_addr error:%d\n", r);
+		ROOT_PRINTF("_load_libc64_run_cmd_func_addr error:%d\n", r);
 		out_err = r;
 		return {};
 	}
@@ -890,7 +799,10 @@ std::string inject_process64_run_cmd_wrapper(
 	ROOT_PRINTF("p_popen_offset:%zu\n", p_popen_offset);
 	ROOT_PRINTF("p_pclose_offset:%zu\n", p_pclose_offset);
 	ROOT_PRINTF("p_read_offset:%zu\n", p_read_offset);
-
+	if(!p_mmap_offset || !p_munmap_offset || !p_chdir_offset || !p_clearenv_offset || !p_setenv_offset
+	|| !p_execve_offset || !p_fileno_offset || !p_popen_offset || !p_pclose_offset || !p_read_offset) {
+		return {};
+	}
 	return inject_process64_run_cmd(
 		str_root_key,
 		target_pid,
@@ -921,7 +833,8 @@ std::string safe_inject_process64_run_cmd_wrapper(
 	bool user_root_auth/* = true*/,
 	const char* chdir_path/* = NULL*/,
 	bool clear_env/* = false*/,
-	std::vector<process64_env>* set_env /* = NULL*/) {
+	std::vector<process64_env>* set_env /* = NULL*/,
+	api_offset_read_mode api_mode /* = api_offset_read_mode::all*/) {
 	std::string cmd_exec_result;
 	if (target_pid <= 0) {
 		out_err = -250;
@@ -933,16 +846,17 @@ std::string safe_inject_process64_run_cmd_wrapper(
 	if(fork_pipe_child_process(finfo)) {
 		out_err = 0;
 		cmd_exec_result = inject_process64_run_cmd_wrapper(
-		str_root_key,
-		target_pid,
-		cmd,
-		out_err,
-		user_root_auth,
-		chdir_path,
-		clear_env,
-		set_env);
-		write_errcode_to_father(finfo, out_err);
-		write_string_to_father(finfo, cmd_exec_result);
+			str_root_key,
+			target_pid,
+			cmd,
+			out_err,
+			user_root_auth,
+			chdir_path,
+			clear_env,
+			set_env,
+			api_mode);
+		write_errcode_from_child(finfo, out_err);
+		write_string_from_child(finfo, cmd_exec_result);
 		_exit(0);
 		return {};
 	}
@@ -960,7 +874,8 @@ std::string safe_inject_process64_run_cmd_wrapper(
 	return cmd_exec_result;
 }
 
-ssize_t inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path) {
+ssize_t inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path,
+	api_offset_read_mode api_mode /* = api_offset_read_mode::all*/) {
 	if (kernel_root::get_root(str_root_key) != 0) {
 		return -271;
 	}
@@ -984,36 +899,38 @@ ssize_t inject_process_env64_PATH_wrapper(const char* str_root_key, int target_p
 	}
 	ROOT_PRINTF("target_process_libc_so_path:%s\n", target_process_libc_so_path.c_str());
 
-
 	size_t p_mmap_offset;
 	size_t p_munmap_offset;
 	size_t p_getenv_offset;
 	size_t p_setenv_offset;
-	int ret = safe_load_libc64_modify_env_func_addr(
+	int ret = _load_libc64_modify_env_func_addr(
 		str_root_key,
 		target_process_libc_so_path.c_str(),
+		api_mode,
 		p_mmap_offset,
 		p_munmap_offset,
 		p_getenv_offset,
 		p_setenv_offset);
-
 	if (ret != 0) {
-		ROOT_PRINTF("safe_load_libc64_modify_env_func_addr error:%d\n", ret);
+		ROOT_PRINTF("_load_libc64_modify_env_func_addr error:%d\n", ret);
 		return ret;
 	}
 	ROOT_PRINTF("p_mmap_offset:%zu\n", p_mmap_offset);
 	ROOT_PRINTF("p_munmap_offset:%zu\n", p_munmap_offset);
 	ROOT_PRINTF("p_getenv_offset:%zu\n", p_getenv_offset);
 	ROOT_PRINTF("p_setenv_offset:%zu\n", p_setenv_offset);
-
-	if (inject_process_env64_PATH(target_pid, target_process_libc_so_path.c_str(), p_mmap_offset, p_munmap_offset, p_getenv_offset, p_setenv_offset, add_path) != 0) {
+	if(!p_mmap_offset || !p_munmap_offset || !p_getenv_offset || !p_setenv_offset) {
 		return -274;
+	}
+	if (inject_process_env64_PATH(target_pid, target_process_libc_so_path.c_str(), p_mmap_offset, p_munmap_offset, p_getenv_offset, p_setenv_offset, add_path) != 0) {
+		return -275;
 	}
 	return 0;
 }
 
 
-ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path) {
+ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path,
+	api_offset_read_mode api_mode /* = api_offset_read_mode::all*/) {
 	ssize_t out_err;
 	std::string libc_path;
 	fork_pipe_info finfo;
@@ -1027,8 +944,8 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 		} else {
 			out_err = -281;
 		}
-		write_errcode_to_father(finfo, out_err);
-		write_string_to_father(finfo, libc_path);
+		write_errcode_from_child(finfo, out_err);
+		write_string_from_child(finfo, libc_path);
 		_exit(0);
 		return {};
 	}
@@ -1056,16 +973,17 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 	size_t p_munmap_offset;
 	size_t p_getenv_offset;
 	size_t p_setenv_offset;
-	out_err = safe_load_libc64_modify_env_func_addr(
+	out_err = _load_libc64_modify_env_func_addr(
 		str_root_key,
 		libc_path.c_str(),
+		api_mode,
 		p_mmap_offset,
 		p_munmap_offset,
 		p_getenv_offset,
 		p_setenv_offset);
 
 	if (out_err != 0) {
-		ROOT_PRINTF("safe_load_libc64_modify_env_func_addr error:%zd\n", out_err);
+		ROOT_PRINTF("_load_libc64_modify_env_func_addr error:%zd\n", out_err);
 		return out_err;
 	}
 	ROOT_PRINTF("p_mmap_offset:%zu\n", p_mmap_offset);
@@ -1073,6 +991,9 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 	ROOT_PRINTF("p_getenv_offset:%zu\n", p_getenv_offset);
 	ROOT_PRINTF("p_setenv_offset:%zu\n", p_setenv_offset);
 
+	if(!p_mmap_offset || !p_munmap_offset || !p_getenv_offset || !p_setenv_offset) {
+		return -287;
+	}
 
 	finfo.reset();
 	if(fork_pipe_child_process(finfo)) {
@@ -1080,227 +1001,24 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 		if (kernel_root::get_root(str_root_key) == 0) {
 			out_err = inject_process_env64_PATH(target_pid, libc_path.c_str(), p_mmap_offset, p_munmap_offset, p_getenv_offset, p_setenv_offset, add_path);
 		} else {
-			out_err = -287;
+			out_err = -288;
 		}
-		write_errcode_to_father(finfo, out_err);
+		write_errcode_from_child(finfo, out_err);
 		_exit(0);
 		return {};
 	}
 	
 	out_err = 0;
 	if(!wait_fork_child_process(finfo)) {
-		out_err = -288;
+		out_err = -289;
 	} else {
 		if(!read_errcode_from_child(finfo, out_err)) {
-			out_err = -289;
+			out_err = -290;
 		}
 	}
 	return out_err;
 }
 
-
-ssize_t inject_process64_so_wrapper(const char* str_root_key, pid_t target_pid, const char* p_target_so_path, const char* target_so_func_name) {
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -301;
-	}
-
-	std::string target_process_libc_so_path = find_process_libc_so_path(target_pid);
-	if (target_process_libc_so_path.empty()) {
-		return -303;
-	}
-	ROOT_PRINTF("target_process_libc_so_path:%s\n", target_process_libc_so_path.c_str());
-
-	size_t p_dlopen_offset;
-	size_t p_dlsym_offset;
-	size_t p_mmap_offset;
-	size_t p_munmap_offset;
-	int ret = safe_load_libc64_so_inject_func_addr(
-		target_process_libc_so_path.c_str(),
-		p_dlopen_offset,
-		p_dlsym_offset,
-		p_mmap_offset,
-		p_munmap_offset);
-
-	if (ret != 0) {
-		ROOT_PRINTF("safe_load_libc64_so_inject_func_addr error:%d\n", ret);
-		return ret;
-	}
-	ROOT_PRINTF("p_dlopen_offset:%zu\n", p_dlopen_offset);
-	ROOT_PRINTF("p_dlsym_offset:%zu\n", p_dlsym_offset);
-	ROOT_PRINTF("p_mmap_offset:%zu\n", p_mmap_offset);
-	ROOT_PRINTF("p_munmap_offset:%zu\n", p_munmap_offset);
-
-	if (inject_process64_so(
-		target_pid,
-		target_process_libc_so_path.c_str(),
-		p_dlopen_offset,
-		p_dlsym_offset,
-		p_mmap_offset,
-		p_munmap_offset,
-		p_target_so_path,
-		target_so_func_name) != 0) {
-		return -304;
-	}
-	return 0;
-}
-
-
-ssize_t safe_inject_process64_so_wrapper(const char* str_root_key, pid_t target_pid, const char* p_target_so_path, const char* target_so_func_name) {
-	ssize_t out_err = 0;
-	std::string libc_path;
-	fork_pipe_info finfo;
-	if(fork_pipe_child_process(finfo)) {
-		out_err = 0;
-		if (kernel_root::get_root(str_root_key) == 0) {
-			libc_path = find_process_libc_so_path(target_pid);
-			if (libc_path.empty()) {
-				out_err = -311;
-			}
-		} else {
-			out_err = -310;
-		}
-		write_errcode_to_father(finfo, out_err);
-		write_string_to_father(finfo, libc_path);
-		_exit(0);
-		return {};
-	}
-	out_err = 0;
-	if(!wait_fork_child_process(finfo)) {
-		out_err = -312;
-	} else {
-		if(!read_errcode_from_child(finfo, out_err)) {
-			out_err = -313;
-		} else if(!read_string_from_child(finfo, libc_path)) {
-			out_err = -314;
-		}
-	}
-	if(out_err != 0) {
-		return out_err;
-	} else if(libc_path.empty()) {
-		out_err = -315;
-		return {};
-	}
-	ROOT_PRINTF("target process libc so path:%s\n", libc_path.c_str());
-
-	size_t p_dlopen_offset;
-	size_t p_dlsym_offset;
-	size_t p_mmap_offset;
-	size_t p_munmap_offset;
-	out_err = safe_load_libc64_so_inject_func_addr(
-		libc_path.c_str(),
-		p_dlopen_offset,
-		p_dlsym_offset,
-		p_mmap_offset,
-		p_munmap_offset);
-
-	if (out_err != 0) {
-		ROOT_PRINTF("safe_load_libc64_so_inject_func_addr error:%zd\n", out_err);
-		return out_err;
-	}
-	ROOT_PRINTF("p_dlopen_offset:%zu\n", p_dlopen_offset);
-	ROOT_PRINTF("p_dlsym_offset:%zu\n", p_dlsym_offset);
-	ROOT_PRINTF("p_mmap_offset:%zu\n", p_mmap_offset);
-	ROOT_PRINTF("p_munmap_offset:%zu\n", p_munmap_offset);
-
-	finfo.reset();
-	if(fork_pipe_child_process(finfo)) {
-		if (kernel_root::get_root(str_root_key) == 0) {
-			out_err = inject_process64_so(
-			target_pid,
-			libc_path.c_str(),
-			p_dlopen_offset,
-			p_dlsym_offset,
-			p_mmap_offset,
-			p_munmap_offset,
-			p_target_so_path,
-			target_so_func_name);
-		} else {
-			out_err = -319;
-		}
-		write_errcode_to_father(finfo, out_err);
-		_exit(0);
-		return {};
-	}
-	
-	out_err = 0;
-	if(!wait_fork_child_process(finfo)) {
-		out_err = -320;
-	} else {
-		if(!read_errcode_from_child(finfo, out_err)) {
-			out_err = -321;
-		}
-	}
-	return out_err;
-}
-
-
-ssize_t inject_process_run_exit_wrapper(const char* str_root_key, int target_pid) {
-	if (kernel_root::get_root(str_root_key) != 0) {
-		return -271;
-	}
-
-	/*
-	安卓:
-	/apex/com.android.runtime/lib64/bionic/libc.so
-	/apex/com.android.runtime/bin/linker64
-
-	Linux进程:
-	/system/lib64/libc.so
-	/system/bin/linker64
-
-	init进程
-	/system/lib64/bootstrap/libc.so
-	/system/lib64/bootstrap/linker64
-	*/
-	std::string target_process_libc_so_path = find_process_libc_so_path(target_pid);
-	if (target_process_libc_so_path.empty()) {
-		return -273;
-	}
-	ROOT_PRINTF("target_process_libc_so_path:%s\n", target_process_libc_so_path.c_str());
-
-
-	size_t p_exit_offset;
-	int err = safe_load_libc64_exit_func_addr(
-		str_root_key,
-		target_process_libc_so_path.c_str(),
-		p_exit_offset);
-
-	if (err != 0) {
-		ROOT_PRINTF("safe_load_libc64_exit_func_addr error:%d\n", err);
-		return err;
-	}
-	ROOT_PRINTF("p_exit_offset:%zu\n", p_exit_offset);
-
-	if (inject_process64_run_exit(target_pid, target_process_libc_so_path.c_str(), p_exit_offset) != 0) {
-		return -274;
-	}
-	return 0;
-}
-
-
-ssize_t safe_inject_process_run_exit_wrapper(const char* str_root_key, int target_pid, const char* add_path) {
-	ssize_t out_err;
-	fork_pipe_info finfo;
-	if(fork_pipe_child_process(finfo)) {
-		if (kernel_root::get_root(str_root_key) == 0) {
-			out_err = inject_process_run_exit_wrapper(str_root_key, target_pid);
-		} else {
-			out_err = -287;
-		}
-		write_errcode_to_father(finfo, out_err);
-		_exit(0);
-		return {};
-	}
-	out_err = 0;
-	if(!wait_fork_child_process(finfo)) {
-		out_err = -288;
-	} else {
-		if(!read_errcode_from_child(finfo, out_err)) {
-			out_err = -289;
-		}
-	}
-	return out_err;
-}
 
 ssize_t kill_process(const char* str_root_key, pid_t pid) {
 	ssize_t err = 0;
@@ -1320,7 +1038,7 @@ ssize_t safe_kill_process(const char* str_root_key, pid_t pid) {
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
 		ssize_t err = kill_process(str_root_key, pid);
-		write_errcode_to_father(finfo, err);
+		write_errcode_from_child(finfo, err);
 		_exit(0);
 		return 0;
 	}
