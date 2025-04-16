@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "kallsyms_lookup_name_6_1_42.h"
+#include "kallsyms_lookup_name_6_1_60.h"
 #include "base_func.h"
 
 #ifndef MIN
@@ -10,15 +10,15 @@
 namespace {
 	const int KSYM_NAME_LEN = 128;
 }
-KallsymsLookupName_6_1_42::KallsymsLookupName_6_1_42(const std::vector<char>& file_buf) : m_file_buf(file_buf)
+KallsymsLookupName_6_1_60::KallsymsLookupName_6_1_60(const std::vector<char>& file_buf) : m_file_buf(file_buf)
 {
 }
 
-KallsymsLookupName_6_1_42::~KallsymsLookupName_6_1_42()
+KallsymsLookupName_6_1_60::~KallsymsLookupName_6_1_60()
 {
 }
 
-bool KallsymsLookupName_6_1_42::init() {
+bool KallsymsLookupName_6_1_60::init() {
 	size_t offset_list_start = 0, offset_list_end = 0;
 	if (!find_kallsyms_offsets_list(offset_list_start, offset_list_end)) {
 		std::cout << "Unable to find the list of kallsyms offsets" << std::endl;
@@ -120,14 +120,14 @@ bool KallsymsLookupName_6_1_42::init() {
 	return true;
 }
 
-bool KallsymsLookupName_6_1_42::is_inited() {
+bool KallsymsLookupName_6_1_60::is_inited() {
 	return m_inited;
 }
 
-int KallsymsLookupName_6_1_42::get_kallsyms_num() {
+int KallsymsLookupName_6_1_60::get_kallsyms_num() {
 	return m_kallsyms_num;
 }
-bool KallsymsLookupName_6_1_42::find_kallsyms_offsets_list(size_t& start, size_t& end) {
+bool KallsymsLookupName_6_1_60::find_kallsyms_offsets_list(size_t& start, size_t& end) {
 	const int var_len = sizeof(long);
 	for (auto x = 0; x + var_len < m_file_buf.size(); x += var_len) {
 		long val1 = *(long*)&m_file_buf[x];
@@ -155,7 +155,7 @@ bool KallsymsLookupName_6_1_42::find_kallsyms_offsets_list(size_t& start, size_t
 	return false;
 }
 
-uint64_t KallsymsLookupName_6_1_42::find_kallsyms_relative_base(size_t offset_list_end, size_t& kallsyms_relative_base_offset) {
+uint64_t KallsymsLookupName_6_1_60::find_kallsyms_relative_base(size_t offset_list_end, size_t& kallsyms_relative_base_offset) {
 	for (int i = 0; i < 5; i++) {
 		int len = sizeof(unsigned int) * i;
 		//unsigned int val1 = *(unsigned int*)&m_file_buf[offset_list_end + len];
@@ -168,7 +168,7 @@ uint64_t KallsymsLookupName_6_1_42::find_kallsyms_relative_base(size_t offset_li
 	return 0;
 }
 
-int KallsymsLookupName_6_1_42::find_kallsyms_num(size_t offset_list_start, size_t offset_list_end, size_t kallsyms_relative_base_end_offset, size_t& kallsyms_num_offset) {
+int KallsymsLookupName_6_1_60::find_kallsyms_num(size_t offset_list_start, size_t offset_list_end, size_t kallsyms_relative_base_end_offset, size_t& kallsyms_num_offset) {
 	size_t size = (offset_list_end - offset_list_start) / sizeof(int);
 	size_t allow_min_size = size - 10;
 	size_t allow_max_size = size + 10;
@@ -192,7 +192,7 @@ int KallsymsLookupName_6_1_42::find_kallsyms_num(size_t offset_list_start, size_
 }
 
 
-bool KallsymsLookupName_6_1_42::find_kallsyms_names_list(int kallsyms_num, size_t kallsyms_num_end_offset, size_t& name_list_start, size_t& name_list_end) {
+bool KallsymsLookupName_6_1_60::find_kallsyms_names_list(int kallsyms_num, size_t kallsyms_num_end_offset, size_t& name_list_start, size_t& name_list_end) {
 	name_list_start = 0;
 	name_list_end = 0;
 	size_t x = kallsyms_num_end_offset;
@@ -215,7 +215,7 @@ bool KallsymsLookupName_6_1_42::find_kallsyms_names_list(int kallsyms_num, size_
 }
 
 
-bool KallsymsLookupName_6_1_42::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end, bool & markers_list_is_align8) {
+bool KallsymsLookupName_6_1_60::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end, bool & markers_list_is_align8) {
 	size_t start = align8(name_list_end_offset);
 	const int var_len = sizeof(long);
 	for (auto x = start; x + var_len < m_file_buf.size(); x += var_len) {
@@ -263,18 +263,30 @@ bool KallsymsLookupName_6_1_42::find_kallsyms_markers_list(int kallsyms_num, siz
 	return true;
 }
 
-bool KallsymsLookupName_6_1_42::find_kallsyms_seqs_of_names_list(int kallsyms_num, size_t markers_list_end_offset, bool markers_list_is_align8, size_t& seqs_of_names_list_start, size_t& seqs_of_names_list_end) {
+bool KallsymsLookupName_6_1_60::find_kallsyms_seqs_of_names_list(int kallsyms_num, size_t markers_list_end_offset, bool markers_list_is_align8, size_t& seqs_of_names_list_start, size_t& seqs_of_names_list_end) {
+	/*
+	output_label("kallsyms_seqs_of_names");
+	for (i = 0; i < table_cnt; i++)
+		printf("\t.byte 0x%02x, 0x%02x, 0x%02x\n",
+			(unsigned char)(table[i]->seq >> 16),
+			(unsigned char)(table[i]->seq >> 8),
+			(unsigned char)(table[i]->seq >> 0));
+	printf("\n");
+
+	
+	*/
 	size_t start = align8(markers_list_end_offset);
 	seqs_of_names_list_start = start;
-	if (markers_list_is_align8) {
-		seqs_of_names_list_end = seqs_of_names_list_start + kallsyms_num * sizeof(long) * 2;
-	} else {
-		seqs_of_names_list_end = seqs_of_names_list_start + kallsyms_num * sizeof(long);
-	}
+	//TODO: Perhaps 8-byte alignment is not required here?
+	//if (markers_list_is_align8) {
+	//	seqs_of_names_list_end = seqs_of_names_list_start + kallsyms_num * 3 * 2;
+	//} else {
+		seqs_of_names_list_end = seqs_of_names_list_start + kallsyms_num * 3;
+	//}
 	return true;
 }
 
-bool KallsymsLookupName_6_1_42::find_kallsyms_token_table(size_t seqs_of_names_list_end_offset, size_t& kallsyms_token_table_start, size_t& kallsyms_token_table_end) {
+bool KallsymsLookupName_6_1_60::find_kallsyms_token_table(size_t seqs_of_names_list_end_offset, size_t& kallsyms_token_table_start, size_t& kallsyms_token_table_end) {
 	size_t start = align8(seqs_of_names_list_end_offset);
 	const int var_len = sizeof(long);
 	for (auto x = start; x + var_len < m_file_buf.size(); x += var_len) {
@@ -294,7 +306,7 @@ bool KallsymsLookupName_6_1_42::find_kallsyms_token_table(size_t seqs_of_names_l
 	return false;
 }
 
-bool KallsymsLookupName_6_1_42::find_kallsyms_token_index(size_t kallsyms_token_table_end, size_t& kallsyms_token_index_start) {
+bool KallsymsLookupName_6_1_60::find_kallsyms_token_index(size_t kallsyms_token_table_end, size_t& kallsyms_token_index_start) {
 	size_t start = align8(kallsyms_token_table_end);
 	const int var_len = sizeof(short);
 	for (auto x = start; x + var_len < m_file_buf.size(); x += var_len) {
@@ -312,7 +324,7 @@ bool KallsymsLookupName_6_1_42::find_kallsyms_token_index(size_t kallsyms_token_
 	return true;
 }
 
-bool KallsymsLookupName_6_1_42::find_kallsyms_sym_func_entry_offset(size_t& kallsyms_sym_func_entry_offset) {
+bool KallsymsLookupName_6_1_60::find_kallsyms_sym_func_entry_offset(size_t& kallsyms_sym_func_entry_offset) {
 	size_t _text_offset = __kallsyms_lookup_name("_text");
 	size_t _stext_offset = __kallsyms_lookup_name("_stext");
 	if (_text_offset != 0) {
@@ -335,7 +347,7 @@ bool KallsymsLookupName_6_1_42::find_kallsyms_sym_func_entry_offset(size_t& kall
  * if uncompressed string is too long (>= maxlen), it will be truncated,
  * given the offset to where the symbol is in the compressed stream.
  */
-unsigned int KallsymsLookupName_6_1_42::kallsyms_expand_symbol(unsigned int off, char* result, size_t maxlen)
+unsigned int KallsymsLookupName_6_1_60::kallsyms_expand_symbol(unsigned int off, char* result, size_t maxlen)
 {
 	int len, skipped_first = 0;
 	const char* tptr;
@@ -394,11 +406,22 @@ tail:
 	return off;
 }
 
+unsigned int KallsymsLookupName_6_1_60::get_symbol_seq(int index)
+{
+	uint8_t* kallsyms_seqs_of_names = (uint8_t*)&m_file_buf[m_kallsyms_seqs_of_names.offset];
+	unsigned int i, seq = 0;
+
+	for (i = 0; i < 3; i++) {
+		seq = (seq << 8) | kallsyms_seqs_of_names[3 * index + i];
+	}
+	return seq;
+}
+
 /*
  * Find the offset on the compressed stream given and index in the
  * kallsyms array.
  */
-unsigned int KallsymsLookupName_6_1_42::get_symbol_offset(unsigned long pos) {
+unsigned int KallsymsLookupName_6_1_60::get_symbol_offset(unsigned long pos) {
 	const uint8_t* name;
 	int i, len;
 
@@ -432,7 +455,7 @@ unsigned int KallsymsLookupName_6_1_42::get_symbol_offset(unsigned long pos) {
 	return name - kallsyms_names;
 }
 
-bool KallsymsLookupName_6_1_42::cleanup_symbol_name(char* s) {
+bool KallsymsLookupName_6_1_60::cleanup_symbol_name(char* s) {
 	char* res;
 
 	//TODO:
@@ -455,34 +478,30 @@ bool KallsymsLookupName_6_1_42::cleanup_symbol_name(char* s) {
 	return false;
 }
 
-int KallsymsLookupName_6_1_42::compare_symbol_name(const char* name, char* namebuf) {
-	int ret;
-
-	ret = strcmp(name, namebuf);
-	if (!ret)
-		return ret;
-
-	if (cleanup_symbol_name(namebuf) && !strcmp(name, namebuf))
-		return 0;
-
-	return ret;
+int KallsymsLookupName_6_1_60::compare_symbol_name(const char* name, char* namebuf) {
+	/* The kallsyms_seqs_of_names is sorted based on names after
+	 * cleanup_symbol_name() (see scripts/kallsyms.c) if clang lto is enabled.
+	 * To ensure correct bisection in kallsyms_lookup_names(), do
+	 * cleanup_symbol_name(namebuf) before comparing name and namebuf.
+	 */
+	cleanup_symbol_name(namebuf);
+	return strcmp(name, namebuf);
 }
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
-int KallsymsLookupName_6_1_42::kallsyms_lookup_names(const char* name, unsigned int* start, unsigned int* end) {
+int KallsymsLookupName_6_1_60::kallsyms_lookup_names(const char* name, unsigned int* start, unsigned int* end) {
 	int ret;
 	int low, mid, high;
 	unsigned int seq, off;
 	char namebuf[KSYM_NAME_LEN];
-	unsigned int* kallsyms_seqs_of_names = (unsigned int*)& m_file_buf[m_kallsyms_seqs_of_names.offset];
 
 	low = 0;
 	high = m_kallsyms_num - 1;
 
 	while (low <= high) {
 		mid = low + (high - low) / 2;
-		seq = kallsyms_seqs_of_names[mid];
+		seq = get_symbol_seq(mid);
 		off = get_symbol_offset(seq);
 		kallsyms_expand_symbol(off, namebuf, ARRAY_SIZE(namebuf));
 		ret = compare_symbol_name(name, namebuf);
@@ -499,7 +518,7 @@ int KallsymsLookupName_6_1_42::kallsyms_lookup_names(const char* name, unsigned 
 
 	low = mid;
 	while (low) {
-		seq = kallsyms_seqs_of_names[low - 1];
+		seq = get_symbol_seq(low - 1);
 		off = get_symbol_offset(seq);
 		kallsyms_expand_symbol(off, namebuf, ARRAY_SIZE(namebuf));
 		if (compare_symbol_name(name, namebuf))
@@ -511,7 +530,7 @@ int KallsymsLookupName_6_1_42::kallsyms_lookup_names(const char* name, unsigned 
 	if (end) {
 		high = mid;
 		while (high < m_kallsyms_num - 1) {
-			seq = kallsyms_seqs_of_names[high + 1];
+			seq = get_symbol_seq(high + 1);
 			off = get_symbol_offset(seq);
 			kallsyms_expand_symbol(off, namebuf, ARRAY_SIZE(namebuf));
 			if (compare_symbol_name(name, namebuf))
@@ -524,7 +543,7 @@ int KallsymsLookupName_6_1_42::kallsyms_lookup_names(const char* name, unsigned 
 	return 0;
 }
 
-uint64_t KallsymsLookupName_6_1_42::kallsyms_sym_address(int idx)
+uint64_t KallsymsLookupName_6_1_60::kallsyms_sym_address(int idx)
 {
 	int* kallsyms_offsets = (int*)&m_file_buf[m_kallsyms_offsets.offset];
 
@@ -546,10 +565,10 @@ uint64_t KallsymsLookupName_6_1_42::kallsyms_sym_address(int idx)
 }
 
 /* Lookup the address for this symbol. Returns 0 if not found. */
-uint64_t KallsymsLookupName_6_1_42::__kallsyms_lookup_name(const char* name, bool include_str_mode) {
+uint64_t KallsymsLookupName_6_1_60::__kallsyms_lookup_name(const char* name, bool include_str_mode) {
 	int ret;
 	unsigned int i;
-	unsigned int* kallsyms_seqs_of_names = (unsigned int*)&m_file_buf[m_kallsyms_seqs_of_names.offset];
+	uint8_t* kallsyms_seqs_of_names = (uint8_t*)&m_file_buf[m_kallsyms_seqs_of_names.offset];
 
 	/* Skip the search for empty string. */
 	if (!*name)
@@ -557,12 +576,12 @@ uint64_t KallsymsLookupName_6_1_42::__kallsyms_lookup_name(const char* name, boo
 
 	ret = kallsyms_lookup_names(name, &i, NULL);
 	if (!ret)
-		return kallsyms_sym_address(kallsyms_seqs_of_names[i]);
+		return kallsyms_sym_address(get_symbol_seq(i));
 
 	return 0;
 }
 
-uint64_t KallsymsLookupName_6_1_42::kallsyms_lookup_name(const char* name, bool include_str_mode) {
+uint64_t KallsymsLookupName_6_1_60::kallsyms_lookup_name(const char* name, bool include_str_mode) {
 	if (!m_inited) { return 0;  }
 	return __kallsyms_lookup_name(name, include_str_mode);
 }
