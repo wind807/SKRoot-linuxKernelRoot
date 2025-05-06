@@ -1,5 +1,4 @@
-﻿#pragma once
-#include "analyze_kernel.h"
+﻿#include "analyze_kernel.h"
 
 AnalyzeKernel::AnalyzeKernel(const std::vector<char>& file_buf) : m_file_buf(file_buf), m_kernel_sym_parser(file_buf)
 {
@@ -25,7 +24,7 @@ KernelSymbolOffset AnalyzeKernel::get_symbol_offset() {
 	return m_kernel_sym_offset;
 }
 
-bool AnalyzeKernel::is_kernel_version_less(const std::string& ver) {
+bool AnalyzeKernel::is_kernel_version_less(const std::string& ver) const {
 	return m_kernel_sym_parser.is_kernel_version_less(ver);
 }
 

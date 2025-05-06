@@ -1,5 +1,4 @@
-﻿#pragma once
-#include "kallsyms_lookup_name_6_1_60.h"
+﻿#include "kallsyms_lookup_name_6_1_60.h"
 #include "base_func.h"
 
 #ifndef MIN

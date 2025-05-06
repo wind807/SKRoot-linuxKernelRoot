@@ -74,7 +74,7 @@ uint64_t KernelSymbolParser::kallsyms_lookup_name(const char* name, bool include
 	}
 }
 
-bool KernelSymbolParser::is_kernel_version_less(const std::string& ver) {
+bool KernelSymbolParser::is_kernel_version_less(const std::string& ver) const {
 	std::string current_version = m_kernel_ver_parser.find_kernel_versions();
 	if (!current_version.empty()) {
 		return m_kernel_ver_parser.is_version_less(current_version, ver);

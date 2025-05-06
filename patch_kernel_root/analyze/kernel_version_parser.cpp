@@ -15,7 +15,7 @@ KernelVersionParser::~KernelVersionParser()
 }
 
 // Helper function to extract and print the version number starting from the given index
-std::string KernelVersionParser::extract_version(const std::vector<char>& buffer, size_t start_index) {
+std::string KernelVersionParser::extract_version(const std::vector<char>& buffer, size_t start_index) const {
 	std::string version;
 	// Extract until we hit a non-version character or end of buffer
 	while (start_index < buffer.size() && (isdigit(buffer[start_index]) || buffer[start_index] == '.')) {
@@ -26,7 +26,7 @@ std::string KernelVersionParser::extract_version(const std::vector<char>& buffer
 }
 
 // Function to search for Linux version patterns using memcmp
-std::string KernelVersionParser::find_kernel_versions() {
+std::string KernelVersionParser::find_kernel_versions() const {
 	const size_t safe_end = MIN(m_file_buf.size(), 256);
 	const char* prefix = "Linux version ";
 	const size_t prefix_len = strlen(prefix);
@@ -41,7 +41,7 @@ std::string KernelVersionParser::find_kernel_versions() {
 
 
 // Helper function to split the version string and convert to integers
-std::vector<int> KernelVersionParser::parse_version(const std::string& version) {
+std::vector<int> KernelVersionParser::parse_version(const std::string& version) const {
 	std::vector<int> parts;
 	std::stringstream ss(version);
 	std::string part;
@@ -58,7 +58,7 @@ std::vector<int> KernelVersionParser::parse_version(const std::string& version) 
 }
 
 // Function to compare two version numbers
-bool KernelVersionParser::is_version_less(const std::string& v1, const std::string& v2) {
+bool KernelVersionParser::is_version_less(const std::string& v1, const std::string& v2) const {
 	auto parts1 = parse_version(v1);
 	auto parts2 = parse_version(v2);
 

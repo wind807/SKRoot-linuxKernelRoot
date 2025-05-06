@@ -6,7 +6,7 @@
 #include <sstream>
 #include <filesystem>
 
-std::string AsmToBytes(const std::string& strArm64Asm) {
+static std::string AsmToBytes(const std::string& strArm64Asm) {
 	//获取汇编文本
 
 	//获取自身运行目录
@@ -79,7 +79,7 @@ std::string AsmToBytes(const std::string& strArm64Asm) {
 
 }
 
-const char HEX[16] = {
+static const char HEX[16] = {
 '0', '1', '2', '3',
 '4', '5', '6', '7',
 '8', '9', 'a', 'b',
@@ -87,7 +87,7 @@ const char HEX[16] = {
 };
 
 /* Convert byte array to hex string. */
-std::string bytes_2_hex_str(const unsigned char* input, size_t length) {
+static std::string bytes_2_hex_str(const unsigned char* input, size_t length) {
 
 	std::string str;
 	str.reserve(length << 1);

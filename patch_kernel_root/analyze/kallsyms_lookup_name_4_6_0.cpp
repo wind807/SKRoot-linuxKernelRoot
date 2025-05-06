@@ -1,5 +1,4 @@
-﻿#pragma once
-#include "kallsyms_lookup_name.h"
+﻿#include "kallsyms_lookup_name_4_6_0.h"
 #include "base_func.h"
 
 #ifndef MIN
@@ -10,32 +9,44 @@
 namespace {
 	const int KSYM_NAME_LEN = 128;
 }
-KallsymsLookupName::KallsymsLookupName(const std::vector<char>& file_buf) : m_file_buf(file_buf)
+KallsymsLookupName_4_6_0::KallsymsLookupName_4_6_0(const std::vector<char>& file_buf) : m_file_buf(file_buf)
 {
 }
 
-KallsymsLookupName::~KallsymsLookupName()
+KallsymsLookupName_4_6_0::~KallsymsLookupName_4_6_0()
 {
 }
 
-bool KallsymsLookupName::init() {
-	size_t addresses_list_start = 0, addresses_list_end = 0;
-	if (!find_kallsyms_addresses_list(addresses_list_start, addresses_list_end)) {
-		std::cout << "Unable to find the list of kallsyms addresses" << std::endl;
+bool KallsymsLookupName_4_6_0::init() {
+	size_t offset_list_start = 0, offset_list_end = 0;
+	if (!find_kallsyms_offsets_list(offset_list_start, offset_list_end)) {
+		std::cout << "Unable to find the list of kallsyms offsets" << std::endl;
 		return false;
 	}
 	size_t kallsyms_num_offset = 0;
-	m_kallsyms_num = find_kallsyms_num(addresses_list_start, addresses_list_end, kallsyms_num_offset);
+	m_kallsyms_num = find_kallsyms_num(offset_list_start, offset_list_end, kallsyms_num_offset);
 	if (!m_kallsyms_num) {
-		std::cout << "Unable to find the num of kallsyms addresses list" << std::endl;
+		std::cout << "Unable to find the num of kallsyms offset list" << std::endl;
 		return false;
 	}
+
 	std::cout << std::hex << "kallsyms_num: 0x" << m_kallsyms_num << ", offset: 0x" << kallsyms_num_offset << std::endl;
 
-	addresses_list_start = addresses_list_end - m_kallsyms_num * sizeof(uint64_t);
-	std::cout << std::hex << "kallsyms_addresses_start: 0x" << addresses_list_start << std::endl;
-	std::cout << std::hex << "kallsyms_addresses_end: 0x" << addresses_list_end << std::endl;
-	m_kallsyms_addresses.offset = addresses_list_start;
+	// revise the offset list offset again
+	const int offset_list_var_len = sizeof(long);
+	offset_list_start = offset_list_end - m_kallsyms_num * offset_list_var_len;
+	long test_first_offset_list_val;
+	do {
+		test_first_offset_list_val = *(long*)&m_file_buf[offset_list_start];
+		if (test_first_offset_list_val) {
+			offset_list_start -= offset_list_var_len;
+			offset_list_end -= offset_list_var_len;
+		}
+	} while (test_first_offset_list_val);
+
+	std::cout << std::hex << "kallsyms_offset_start: 0x" << offset_list_start << std::endl;
+	std::cout << std::hex << "kallsyms_offset_end: 0x" << offset_list_end << std::endl;
+	m_kallsyms_offsets.offset = offset_list_start;
 
 	size_t kallsyms_num_end_offset = kallsyms_num_offset + sizeof(m_kallsyms_num);
 	size_t name_list_start = 0, name_list_end = 0;
@@ -74,7 +85,7 @@ bool KallsymsLookupName::init() {
 	}
 	std::cout << std::hex << "kallsyms_token_index_start: 0x" << token_index_start << std::endl;
 	m_kallsyms_token_index.offset = token_index_start;
-
+	
 	size_t kallsyms_sym_func_entry_offset = 0;
 	if (!find_kallsyms_sym_func_entry_offset(kallsyms_sym_func_entry_offset)) {
 		std::cout << "Unable to find the list of kallsyms sym function entry offset" << std::endl;
@@ -82,32 +93,32 @@ bool KallsymsLookupName::init() {
 	}
 	std::cout << std::hex << "kallsyms_sym_func_entry_offset: 0x" << kallsyms_sym_func_entry_offset << std::endl;
 	m_kallsyms_sym_func_entry_offset = kallsyms_sym_func_entry_offset;
-
+	
 	m_inited = true;
 	return true;
 }
 
-bool KallsymsLookupName::is_inited() {
+bool KallsymsLookupName_4_6_0::is_inited() {
 	return m_inited;
 }
 
-int KallsymsLookupName::get_kallsyms_num() {
+int KallsymsLookupName_4_6_0::get_kallsyms_num() {
 	return m_kallsyms_num;
 }
-bool KallsymsLookupName::find_kallsyms_addresses_list(size_t& start, size_t& end) {
-	const int var_len = sizeof(uint64_t);
+bool KallsymsLookupName_4_6_0::find_kallsyms_offsets_list(size_t& start, size_t& end) {
+	const int var_len = sizeof(long);
 	for (auto x = 0; x + var_len < m_file_buf.size(); x += var_len) {
-		uint64_t val1 = *(uint64_t*)&m_file_buf[x];
-		uint64_t val2 = *(uint64_t*)&m_file_buf[x + var_len];
+		long val1 = *(long*)&m_file_buf[x];
+		long val2 = *(long*)&m_file_buf[x + var_len];
 		if (val1 != 0 || val1 >= val2) {
 			continue;
 		}
 		int cnt = 0;
 		auto j = x + var_len;
 		for (; j + var_len < m_file_buf.size(); j += var_len) {
-			val1 = *(uint64_t*)&m_file_buf[j];
-			val2 = *(uint64_t*)&m_file_buf[j + var_len];
-			if (val1 > val2 || val2 == 0 || val2 == 0x1000000000000000) {
+			val1 = *(long*)&m_file_buf[j];
+			val2 = *(long*)&m_file_buf[j + var_len];
+			if (val1 > val2 || val2 == 0 || (val2 - val1) > 0x1000000) {
 				j += var_len;
 				break;
 			}
@@ -122,14 +133,14 @@ bool KallsymsLookupName::find_kallsyms_addresses_list(size_t& start, size_t& end
 	return false;
 }
 
-int KallsymsLookupName::find_kallsyms_num(size_t addresses_list_start, size_t addresses_list_end, size_t& kallsyms_num_offset) {
-	size_t size = (addresses_list_end - addresses_list_start) / sizeof(uint64_t);
-	size_t allow_min_size = size -  10;
-	size_t allow_max_size = size +  10;
+int KallsymsLookupName_4_6_0::find_kallsyms_num(size_t offset_list_start, size_t offset_list_end, size_t& kallsyms_num_offset) {
+	size_t size = (offset_list_end - offset_list_start) / sizeof(int);
+	size_t allow_min_size = size - 10;
+	size_t allow_max_size = size + 10;
 	auto _min = MIN(m_file_buf.size(), MAX_FIND_RANGE);
 	int cnt = 10;
 	for (size_t x = 0; (x + sizeof(int)) < _min; x++) {
-		auto pos = addresses_list_end + x * sizeof(int);
+		auto pos = offset_list_end + x * sizeof(int);
 		int val = *(int*)&m_file_buf[pos];
 		if (val == 0) {
 			continue;
@@ -146,7 +157,7 @@ int KallsymsLookupName::find_kallsyms_num(size_t addresses_list_start, size_t ad
 }
 
 
-bool KallsymsLookupName::find_kallsyms_names_list(int kallsyms_num, size_t kallsyms_num_end_offset, size_t& name_list_start, size_t& name_list_end) {
+bool KallsymsLookupName_4_6_0::find_kallsyms_names_list(int kallsyms_num, size_t kallsyms_num_end_offset, size_t& name_list_start, size_t& name_list_end) {
 
 	name_list_start = 0;
 	name_list_end = 0;
@@ -170,7 +181,7 @@ bool KallsymsLookupName::find_kallsyms_names_list(int kallsyms_num, size_t kalls
 }
 
 
-bool KallsymsLookupName::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end) {
+bool KallsymsLookupName_4_6_0::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end) {
 	size_t start = align8(name_list_end_offset);
 	const int var_len = sizeof(long);
 	for (auto x = start; x + var_len < m_file_buf.size(); x += var_len) {
@@ -179,13 +190,12 @@ bool KallsymsLookupName::find_kallsyms_markers_list(int kallsyms_num, size_t nam
 		if (val1 == 0 && val2 > 0) {
 			markers_list_start = x;
 			break;
-		}
-		else if (val1 == 0 && val2 == 0) {
+		} else if (val1 == 0 && val2 == 0) {
 			continue;
 		}
 		return false;
 	}
-
+	
 	auto exist_val_start = markers_list_start + var_len;
 
 	bool is_align8 = false;
@@ -208,20 +218,18 @@ bool KallsymsLookupName::find_kallsyms_markers_list(int kallsyms_num, size_t nam
 		size_t back_val = align8(markers_list_start) - markers_list_start;
 		if (back_val == 0) {
 			markers_list_start -= 8;
-		}
-		else {
+		} else {
 			markers_list_start -= back_val; // 4
 		}
 		markers_list_end = markers_list_start + ((kallsyms_num + 255) >> 8) * sizeof(long) * 2;
-	}
-	else {
+	} else {
 		markers_list_end = markers_list_start + ((kallsyms_num + 255) >> 8) * sizeof(long);
 	}
-
+	
 	return true;
 }
 
-bool KallsymsLookupName::find_kallsyms_token_table(size_t markers_list_end_offset, size_t& kallsyms_token_table_start, size_t& kallsyms_token_table_end) {
+bool KallsymsLookupName_4_6_0::find_kallsyms_token_table(size_t markers_list_end_offset, size_t& kallsyms_token_table_start, size_t& kallsyms_token_table_end) {
 	size_t start = align8(markers_list_end_offset);
 	const int var_len = sizeof(long);
 	for (auto x = start; x + var_len < m_file_buf.size(); x += var_len) {
@@ -241,7 +249,7 @@ bool KallsymsLookupName::find_kallsyms_token_table(size_t markers_list_end_offse
 	return false;
 }
 
-bool KallsymsLookupName::find_kallsyms_token_index(size_t kallsyms_token_table_end, size_t& kallsyms_token_index_start) {
+bool KallsymsLookupName_4_6_0::find_kallsyms_token_index(size_t kallsyms_token_table_end, size_t& kallsyms_token_index_start) {
 	size_t start = align8(kallsyms_token_table_end);
 	const int var_len = sizeof(short);
 	for (auto x = start; x + var_len < m_file_buf.size(); x += var_len) {
@@ -259,18 +267,16 @@ bool KallsymsLookupName::find_kallsyms_token_index(size_t kallsyms_token_table_e
 	return true;
 }
 
-bool KallsymsLookupName::find_kallsyms_sym_func_entry_offset(size_t& kallsyms_sym_func_entry_offset) {
+bool KallsymsLookupName_4_6_0::find_kallsyms_sym_func_entry_offset(size_t& kallsyms_sym_func_entry_offset) {
 	size_t _text_offset = __kallsyms_lookup_name("_text");
-	if (_text_offset == 0) {
+	size_t _stext_offset = __kallsyms_lookup_name("_stext");
+	if (_text_offset != 0) {
 		return false;
 	}
-	m_text_offset = _text_offset;
-
-	size_t _stext_offset = __kallsyms_lookup_name("_stext");
 	const int var_len = sizeof(int);
 	for (auto x = _stext_offset; x + var_len < m_file_buf.size(); x += var_len) {
 		int val1 = *(int*)&m_file_buf[x];
-		if (val1 == 0) {
+		if (val1 == 0 ) {
 			continue;
 		}
 		kallsyms_sym_func_entry_offset = x - _stext_offset;
@@ -284,7 +290,7 @@ bool KallsymsLookupName::find_kallsyms_sym_func_entry_offset(size_t& kallsyms_sy
  * if uncompressed string is too long (>= maxlen), it will be truncated,
  * given the offset to where the symbol is in the compressed stream.
  */
-unsigned int KallsymsLookupName::kallsyms_expand_symbol(unsigned int off, char* result, size_t maxlen)
+unsigned int KallsymsLookupName_4_6_0::kallsyms_expand_symbol(unsigned int off, char* result, size_t maxlen)
 {
 	int len, skipped_first = 0;
 	const char* tptr;
@@ -339,16 +345,14 @@ tail:
 }
 
 /* Lookup the address for this symbol. Returns 0 if not found. */
-uint64_t KallsymsLookupName::__kallsyms_lookup_name(const char* name, bool include_str_mode) {
+uint64_t KallsymsLookupName_4_6_0::__kallsyms_lookup_name(const char* name, bool include_str_mode) {
 	for (auto i = 0, off = 0; i < m_kallsyms_num; i++) {
 		char namebuf[KSYM_NAME_LEN] = { 0 };
 		off = kallsyms_expand_symbol(off, namebuf, sizeof(namebuf));
 
-		//std::cout << namebuf << std::endl;
 		if (strcmp(namebuf, name) == 0 || (include_str_mode && strstr(namebuf, name))) {
-			auto pos = m_kallsyms_addresses.offset + i * sizeof(uint64_t);
-			uint64_t offset = *(uint64_t*)&m_file_buf[pos];
-			offset -= m_text_offset;
+			auto pos = m_kallsyms_offsets.offset + i * sizeof(int);
+			uint64_t offset = *(long*)&m_file_buf[pos];
 			offset += m_kallsyms_sym_func_entry_offset;
 			return offset;
 		}
@@ -356,7 +360,7 @@ uint64_t KallsymsLookupName::__kallsyms_lookup_name(const char* name, bool inclu
 	return 0;
 }
 
-uint64_t KallsymsLookupName::kallsyms_lookup_name(const char* name, bool include_str_mode) {
-	if (!m_inited) { return 0; }
+uint64_t KallsymsLookupName_4_6_0::kallsyms_lookup_name(const char* name, bool include_str_mode) {
+	if (!m_inited) { return 0;  }
 	return __kallsyms_lookup_name(name, include_str_mode);
 }
