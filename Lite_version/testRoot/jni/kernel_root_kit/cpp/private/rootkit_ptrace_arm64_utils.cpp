@@ -13,7 +13,6 @@
 #include <sys/uio.h>
 #include <cinttypes>
 
-#include "rootkit_log.h"
 namespace kernel_root {
 int ptrace_readdata(pid_t pid, uint8_t *src, uint8_t *buf, size_t size)
 {
@@ -102,7 +101,7 @@ int ptrace_getregs(pid_t pid, struct pt_regs * regs)
 	ioVec.iov_len = sizeof(*regs);
 	if (ptrace(PTRACE_GETREGSET, pid, (size_t)regset, &ioVec) < 0) {
 		perror("ptrace_getregs: Can not get register values");
-		ROOT_PRINTF(" io %p, %lu", ioVec.iov_base, ioVec.iov_len);
+		//printf(" io %p, %lu", ioVec.iov_base, ioVec.iov_len);
 		return -1;
 	}
 	return 0;
@@ -170,14 +169,14 @@ uint64_t ptrace_ip(struct pt_regs * regs)
 //二是调用ptrace_getregs函数获取所有寄存器的值，主要是为了获取r0即函数的返回值。    
 int ptrace_call_wrapper(pid_t target_pid, const char * func_name, void * func_addr, unsigned long * parameters, int param_num, struct pt_regs * regs)
 {
-	ROOT_PRINTF("[+] Calling %s in target process.\n", func_name);
+	//printf("[+] Calling %s in target process.\n", func_name);
 	if (ptrace_call(target_pid, (uintptr_t)func_addr, parameters, param_num, regs) == -1)
 		return -1;
 
 	if (ptrace_getregs(target_pid, regs) == -1)
 		return -1;
-	ROOT_PRINTF("[+] Target process returned from %s, return value=%" PRIu64 ", pc=%" PRIu64 " \n",
-		func_name, ptrace_retval(regs), ptrace_ip(regs));
+	//printf("[+] Target process returned from %s, return value=%" PRIu64 ", pc=%" PRIu64 " \n",
+	//func_name, ptrace_retval(regs), ptrace_ip(regs));
 	return 0;
 }
 
@@ -246,23 +245,23 @@ Arm与Thumb之间的状态切换是通过专用的转移交换指令BX来实现�
 	 * tively.
 	 */
 	if (ptrace(PTRACE_SYSCALL, pid, NULL, 0) < 0) {
-		ROOT_PRINTF("ptrace_syscall");
+		//printf("ptrace_syscall");
 		return -1;
 	}
 
 	waitpid(pid, NULL, WUNTRACED);
 
 	if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) < 0) {
-		ROOT_PRINTF("ptrace_syscall");
+		//printf("ptrace_syscall");
 		return -1;
 	}
 
 	res = waitpid(pid, NULL, WUNTRACED);
 
-	ROOT_PRINTF("[+] status is %x\n", status);
+	//printf("[+] status is %x\n", status);
 	if (res != pid || !WIFSTOPPED(status))//WIFSTOPPED(status) 若为当前暂停子进程返回的状态，则为真
 		return 0;
-	ROOT_PRINTF("[+]done %d\n", (WSTOPSIG(status) == SIGSEGV) ? 1 : 0);
+	//printf("[+]done %d\n", (WSTOPSIG(status) == SIGSEGV) ? 1 : 0);
 	//设置siginal 11信号处理函数
 /*	if(signal(SIGSEGV,handler) == SIG_ERR){
 		LOGE("[-]can not set handler for SIGSEGV");

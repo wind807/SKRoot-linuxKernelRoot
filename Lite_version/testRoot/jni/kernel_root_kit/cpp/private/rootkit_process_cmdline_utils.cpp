@@ -1,5 +1,4 @@
-﻿#pragma once
-#include <unistd.h>
+﻿#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -7,10 +6,10 @@
 #include <set>
 #include <map>
 #include <time.h>
-#include "rootkit_command.h"
+#include "rootkit_umbrella.h"
 
 namespace kernel_root {
-static ssize_t find_all_cmdline_process(const char* str_root_key, const char* target_cmdline, std::set<pid_t> & out, bool compare_full_agrc = false) {
+ssize_t unsafe_find_all_cmdline_process(const char* str_root_key, const char* target_cmdline, std::set<pid_t> & out, bool compare_full_agrc) {
 	out.clear();
 	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
 		return ERR_NO_ROOT;
@@ -70,7 +69,7 @@ static ssize_t find_all_cmdline_process(const char* str_root_key, const char* ta
 				} else {
 					fgets(cmdline, sizeof(cmdline), fp);
 					fclose(fp);
-					//ROOT_PRINTF("[+] find %d process cmdline: %s\n", id, cmdline);
+					//printf("[+] find %d process cmdline: %s\n", id, cmdline);
 					if (strcmp(cmdline, target_cmdline) == 0) {
 						/* process found */
 						out.insert(pid);
@@ -85,18 +84,17 @@ static ssize_t find_all_cmdline_process(const char* str_root_key, const char* ta
 	return ERR_NONE;
 }
 
-static ssize_t safe_find_all_cmdline_process(const char* str_root_key, const char* target_cmdline, std::set<pid_t> & out, bool compare_full_agrc = false)
-{
+ssize_t safe_find_all_cmdline_process(const char* str_root_key, const char* target_cmdline, std::set<pid_t> & out, bool compare_full_agrc) {
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
-		ssize_t ret = find_all_cmdline_process(str_root_key, target_cmdline, out, compare_full_agrc);
+		ssize_t ret = unsafe_find_all_cmdline_process(str_root_key, target_cmdline, out, compare_full_agrc);
 		write_errcode_from_child(finfo, ret);
 		write_set_int_from_child(finfo, out);
 		_exit(0);
 		return ERR_NONE;
 	}
 	ssize_t err = ERR_NONE;
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		out.clear();
@@ -109,8 +107,11 @@ static ssize_t safe_find_all_cmdline_process(const char* str_root_key, const cha
 	return err;
 }
 
-static ssize_t wait_and_find_cmdline_process(const char* str_root_key, const char* target_cmdline, int timeout, pid_t & pid, bool compare_full_agrc = false)
-{
+ssize_t find_all_cmdline_process(const char* str_root_key, const char* target_cmdline, std::set<pid_t> & out, bool compare_full_agrc) {
+	return safe_find_all_cmdline_process(str_root_key, target_cmdline, out, compare_full_agrc);
+}
+
+static ssize_t unsafe_wait_and_find_cmdline_process(const char* str_root_key, const char* target_cmdline, int timeout, pid_t & pid, bool compare_full_agrc) {
 	pid = 0;
 	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
 		return ERR_NO_ROOT;
@@ -175,7 +176,7 @@ static ssize_t wait_and_find_cmdline_process(const char* str_root_key, const cha
 					} else {
 						fgets(cmdline, sizeof(cmdline), fp);
 						fclose(fp);
-						//ROOT_PRINTF("[+] find %d process cmdline: %s\n", id, cmdline);
+						//printf("[+] find %d process cmdline: %s\n", id, cmdline);
 						if (strcmp(cmdline, target_cmdline) == 0) {
 							/* process found */
 							pid = old_pid;
@@ -202,19 +203,18 @@ static ssize_t wait_and_find_cmdline_process(const char* str_root_key, const cha
 	return pid > 0 ? 0 : -1000023;
 }
 
-static ssize_t safe_wait_and_find_cmdline_process(const char* str_root_key, const char* target_cmdline, int timeout, pid_t &pid, bool compare_full_agrc = false)
-{
+ssize_t safe_wait_and_find_cmdline_process(const char* str_root_key, const char* target_cmdline, int timeout, pid_t &pid, bool compare_full_agrc) {
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
 		pid_t pid;
-		ssize_t ret = wait_and_find_cmdline_process(str_root_key, target_cmdline, timeout, pid, compare_full_agrc);
+		ssize_t ret = unsafe_wait_and_find_cmdline_process(str_root_key, target_cmdline, timeout, pid, compare_full_agrc);
 		write_errcode_from_child(finfo, ret);
 		write_int_from_child(finfo, pid);
 		_exit(0);
 		return ERR_NONE;
 	}
 	ssize_t err = ERR_NONE;
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
@@ -226,9 +226,11 @@ static ssize_t safe_wait_and_find_cmdline_process(const char* str_root_key, cons
 	return err;
 }
 
+ssize_t wait_and_find_cmdline_process(const char* str_root_key, const char* target_cmdline, int timeout, pid_t &pid, bool compare_full_agrc) {
+	return safe_wait_and_find_cmdline_process(str_root_key, target_cmdline, timeout, pid, compare_full_agrc);
+}
 
-static ssize_t get_all_cmdline_process(const char* str_root_key, std::map<pid_t, std::string> & pid_map, bool compare_full_agrc = false)
-{
+ssize_t unsafe_get_all_cmdline_process(const char* str_root_key, std::map<pid_t, std::string> & pid_map, bool compare_full_agrc) {
 	DIR* dir;
 	char filename[32];
 
@@ -296,12 +298,11 @@ static ssize_t get_all_cmdline_process(const char* str_root_key, std::map<pid_t,
 	return pid_map.size() > 0 ? 0 : -1000043;
 }
 
-static ssize_t safe_get_all_cmdline_process(const char* str_root_key, std::map<pid_t, std::string> & pid_map, bool compare_full_agrc = false)
-{
+ssize_t safe_get_all_cmdline_process(const char* str_root_key, std::map<pid_t, std::string> & pid_map, bool compare_full_agrc) {
 	fork_pipe_info finfo;
 	std::map<int, std::string> data;
 	if(fork_pipe_child_process(finfo)) {
-		ssize_t ret = get_all_cmdline_process(str_root_key, pid_map, compare_full_agrc);
+		ssize_t ret = unsafe_get_all_cmdline_process(str_root_key, pid_map, compare_full_agrc);
 		for(auto & item : pid_map) {
 			data[item.first] = item.second;
 		}
@@ -311,7 +312,7 @@ static ssize_t safe_get_all_cmdline_process(const char* str_root_key, std::map<p
 		return ERR_NONE;
 	}
 	ssize_t err = ERR_NONE;
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
@@ -326,4 +327,7 @@ static ssize_t safe_get_all_cmdline_process(const char* str_root_key, std::map<p
 	return err;
 }
 
+ssize_t get_all_cmdline_process(const char* str_root_key, std::map<pid_t, std::string> & pid_map, bool compare_full_agrc) {
+	return safe_get_all_cmdline_process(str_root_key, pid_map, compare_full_agrc);
+}
 }

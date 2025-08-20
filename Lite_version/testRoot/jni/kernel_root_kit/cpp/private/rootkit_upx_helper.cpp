@@ -12,16 +12,15 @@
 #include <sys/types.h>
 
 #include "rootkit_umbrella.h"
+#if !defined(SU_MODE)
 #include "rootkit_upx_data.h"
-#include "rootkit_log.h"
-#include "../../su/su_hide_path_utils.h"
+#endif
 
 namespace kernel_root {
-
+#if !defined(SU_MODE)
 bool write_upx_exec(const char* target_path) {
     std::ofstream file(std::string(target_path), std::ios::binary | std::ios::out);
     if (!file.is_open()) {
-        ROOT_PRINTF("Could not open file %s.\n", target_path);
         return false;
     }
     file.write(reinterpret_cast<char*>(upx_file_data), upx_file_size);
@@ -29,7 +28,7 @@ bool write_upx_exec(const char* target_path) {
     return true;
 }
 
-ssize_t upx_file(const char* str_root_key, const char* file_path) {
+ssize_t unsafe_upx_file(const char* str_root_key, const char* file_path) {
     if (kernel_root::get_root(str_root_key) != ERR_NONE) {
         return ERR_NO_ROOT;
     }
@@ -50,7 +49,7 @@ ssize_t upx_file(const char* str_root_key, const char* file_path) {
     int random_number = dist(gen);
 	std::stringstream sstr;
 	sstr << " -" << random_number << " -o " << file_path_upx << " " << file_path;
-	ssize_t err = kernel_root::safe_root_exec_process(str_root_key, sstr.str().c_str());
+	ssize_t err = kernel_root::root_exec_process(str_root_key, sstr.str().c_str());
 	do {
 		BREAK_ON_ERROR(err);
 		if(!std::filesystem::exists(file_path_upx)) {
@@ -70,12 +69,12 @@ ssize_t safe_upx_file(const char* str_root_key, const char* file_path) {
 	ssize_t err = ERR_NONE;
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
-		err = upx_file(str_root_key, file_path);
+		err = unsafe_upx_file(str_root_key, file_path);
 		write_errcode_from_child(finfo, err);
 		_exit(0);
 		return ERR_NONE;
 	}
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
@@ -85,6 +84,10 @@ ssize_t safe_upx_file(const char* str_root_key, const char* file_path) {
 	return err;
 }
 
+ssize_t upx_file(const char* str_root_key, const char* file_path) {
+	return safe_upx_file(str_root_key, file_path);
+}
+#endif
 }
 
 

@@ -16,7 +16,7 @@
 #include "rootkit_umbrella.h"
 
 namespace kernel_root {
-	ssize_t root_exec_process(const char* str_root_key, const char *file_path) {
+	ssize_t unsafe_root_exec_process(const char* str_root_key, const char *file_path) {
 		int err = ERR_NONE;
 		if (file_path == NULL || strlen(file_path) == 0) { return ERR_PARAM; }
 
@@ -57,13 +57,13 @@ namespace kernel_root {
 		
 		fork_pipe_info finfo;
 		if (fork_pipe_child_process(finfo)) {
-			ssize_t err = root_exec_process(str_root_key, file_path);
+			ssize_t err = unsafe_root_exec_process(str_root_key, file_path);
 			write_errcode_from_child(finfo, err);
 			_exit(0);
 			return ERR_NONE;
 		}
 		ssize_t err = ERR_NONE;
-		if (!wait_fork_child_process(finfo)) {
+		if (!is_fork_child_process_work_finished(finfo)) {
 			err = ERR_WAIT_FORK_CHILD;
 		} else if (!read_errcode_from_child(finfo, err)) {
 			if(err == ERR_READ_EOF) {
@@ -72,4 +72,11 @@ namespace kernel_root {
 		}
 		return err;
 	}
+
+	ssize_t root_exec_process(
+		const char* str_root_key,
+		const char *file_path) {
+		return safe_root_exec_process(str_root_key, file_path);
+	}
+
 }

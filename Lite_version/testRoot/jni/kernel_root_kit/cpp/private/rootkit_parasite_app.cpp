@@ -1,15 +1,17 @@
 #include "rootkit_parasite_app.h"
 
-#ifndef LIB_ROOT_SERVER_MODE
+#if !defined(LIB_ROOT_SERVER_MODE) && !defined(SU_MODE)
 #include "rootkit_lib_root_server_data.h"
 #endif
 #include "rootkit_umbrella.h"
+#if !defined(SU_MODE)
 #include "rootkit_lib_su_env_data.h"
+#endif
 #include "rootkit_parasite_patch_elf.h"
-#include "rootkit_log.h"
 #include "rootkit_maps_helper.h"
 #include "rootkit_upx_helper.h"
 #include "rootkit_random.h"
+#include "rootkit_file_replace_string.h"
 #include "../../lib_root_server/lib_root_server_inline.h"
 #include "../../lib_su_env/lib_su_env_inline.h"
 #include <string.h>
@@ -42,28 +44,6 @@ namespace {
 		return p.filename();
 	}
 
-	bool replace_feature_string_in_buf(const char *feature_string_buf, size_t feature_string_buf_size, std::string_view new_string, char *buf, size_t buf_size) {
-		bool write = false;
-		std::shared_ptr<char> sp_new_feature(new (std::nothrow) char[feature_string_buf_size], std::default_delete<char[]>());
-		if(sp_new_feature) {
-			memset(sp_new_feature.get(), 0, feature_string_buf_size);
-			size_t copy_len = new_string.length() + 1;
-			copy_len = fmin(feature_string_buf_size - 1, copy_len);
-			strncpy(sp_new_feature.get(), new_string.data(), copy_len);
-
-			for (size_t i = 0; i <= buf_size - feature_string_buf_size; i++) {
-				char * desc = buf;
-				desc += i;
-				if (memcmp(desc, feature_string_buf, feature_string_buf_size) == 0) {
-					memcpy(desc, sp_new_feature.get(), copy_len);
-					write = true;
-					desc += feature_string_buf_size;
-				}
-			}
-		}
-		return write;
-	}
-
 	bool random_expand_file(const std::string& file_path) {
   		std::ofstream file(file_path, std::ios::binary | std::ios::app);
 		if (!file.is_open()) {
@@ -94,14 +74,12 @@ namespace {
 		// Retrieve the SELinux context from the source file
 		ssize_t length = getxattr(source_file_path, XATTR_NAME_SELINUX, selinux_context, sizeof(selinux_context));
 		if (length == -1) {
-			ROOT_PRINTF("getxattr error for source: %s. Error: %s\n", source_file_path, strerror(errno));
 			return false;
 		}
 		selinux_context[length] = '\0'; // ensure null termination
 
 		// Set the SELinux context to the target file
 		if (setxattr(target_file_path, XATTR_NAME_SELINUX, selinux_context, strlen(selinux_context) + 1, 0)) {
-			ROOT_PRINTF("setxattr error for target: %s. Error: %s\n", target_file_path, strerror(errno));
 			return false;
 		}
 
@@ -142,7 +120,7 @@ namespace {
 
 }
 
-ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_cmdline,
+ssize_t unsafe_parasite_precheck_app(const char* str_root_key, const char* target_pid_cmdline,
  std::map<std::string, app_so_status> &output_so_full_path) {
 	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
 		return ERR_NO_ROOT;
@@ -208,12 +186,11 @@ ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_c
 	return ERR_NONE;
 }
 
-//fork安全版本（可用于安卓APP直接调用）
 ssize_t safe_parasite_precheck_app(const char* str_root_key, const char* target_pid_cmdline, std::map<std::string, app_so_status> &output_so_full_path) {
 	fork_pipe_info finfo;
 	std::map<std::string, int> data;
 	if(fork_pipe_child_process(finfo)) {
-		ssize_t ret = parasite_precheck_app(str_root_key, target_pid_cmdline, output_so_full_path);
+		ssize_t ret = unsafe_parasite_precheck_app(str_root_key, target_pid_cmdline, output_so_full_path);
 		for(auto & item : output_so_full_path) {
 			data[item.first] = item.second;
 		}
@@ -223,7 +200,7 @@ ssize_t safe_parasite_precheck_app(const char* str_root_key, const char* target_
 		return ERR_NONE;
 	}
 	ssize_t err = ERR_NONE;
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
@@ -237,12 +214,14 @@ ssize_t safe_parasite_precheck_app(const char* str_root_key, const char* target_
 	}
 	return err;
 }
+ssize_t parasite_precheck_app(const char* str_root_key, const char* target_pid_cmdline,
+ std::map<std::string, app_so_status> &output_so_full_path) {
+	return safe_parasite_precheck_app(str_root_key, target_pid_cmdline, output_so_full_path);
+}
 
+#if !defined(LIB_ROOT_SERVER_MODE) && !defined(SU_MODE)
 
-
-#ifndef LIB_ROOT_SERVER_MODE
-
-ssize_t write_root_server_so_file(const char* str_root_key, const char* implant_so_full_path, const char* su_folder_path) {
+ssize_t write_root_server_so_file(const char* str_root_key, const char* implant_so_full_path) {
 	std::shared_ptr<char> sp_lib_root_server_file_data(new (std::nothrow) char[kernel_root::lib_root_server_file_size], std::default_delete<char[]>());
 	if(!sp_lib_root_server_file_data) {
 		return ERR_NO_MEM;
@@ -252,13 +231,6 @@ ssize_t write_root_server_so_file(const char* str_root_key, const char* implant_
 
 	// write root key
 	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_root_key), sizeof(static_inline_root_key), str_root_key, sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size)) {
-		ROOT_PRINTF("write root key failed.\n");
-		return ERR_WRITE_ROOT_SERVER;
-	}
-
-	// write su path
-	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_su_base), sizeof(static_inline_su_base), su_folder_path, sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size)) {
-		ROOT_PRINTF("write su base path failed.\n");
 		return ERR_WRITE_ROOT_SERVER;
 	}
 
@@ -266,17 +238,16 @@ ssize_t write_root_server_so_file(const char* str_root_key, const char* implant_
 	remove(implant_so_full_path);
     std::ofstream file(std::string(implant_so_full_path), std::ios::binary | std::ios::out);
     if (!file.is_open()) {
-		ROOT_PRINTF("Could not open file %s.\n", implant_so_full_path);
         return ERR_OPEN_FILE;
     }
     file.write(sp_lib_root_server_file_data.get(), kernel_root::lib_root_server_file_size);
     file.close();
 	
-	ssize_t err = safe_upx_file(str_root_key, implant_so_full_path);
+	ssize_t err = upx_file(str_root_key, implant_so_full_path);
 	random_expand_file(std::string(implant_so_full_path));
     return err;
 }
-ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_folder_path) {
+ssize_t unsafe_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path) {
 	std::filesystem::path path(original_so_full_path);
 	std::string folder_path = path.parent_path().string();
 	char lib_name[20] = {0};
@@ -286,21 +257,21 @@ ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cm
 		return ERR_NO_ROOT;
 	}
 	remove(implant_so_full_path.c_str());
-	ssize_t err = write_root_server_so_file(str_root_key, implant_so_full_path.c_str(), su_folder_path);
+	ssize_t err = write_root_server_so_file(str_root_key, implant_so_full_path.c_str());
 	RETURN_ON_ERROR(err);
 	return _internal_parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, implant_so_full_path.c_str());
 }
 
-ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, const char* su_folder_path) {
+ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path) {
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
-		ssize_t ret = parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path, su_folder_path);
+		ssize_t ret = unsafe_parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path);
 		write_errcode_from_child(finfo, ret);
 		_exit(0);
 		return ERR_NONE;
 	}
 	ssize_t err = ERR_NONE;
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
@@ -309,8 +280,12 @@ ssize_t safe_parasite_implant_app(const char* str_root_key, const char* target_p
 	}
 	return err;
 }
-#endif
 
+ssize_t parasite_implant_app(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path) {
+	return safe_parasite_implant_app(str_root_key, target_pid_cmdline, original_so_full_path);
+}
+#endif
+#if !defined(SU_MODE)
 ssize_t write_su_env_so_file(const char* str_root_key, const char* implant_so_full_path, std::string_view su_folder) {
 	std::shared_ptr<char> sp_lib_su_env_file_data(new (std::nothrow) char[kernel_root::lib_su_env_file_size], std::default_delete<char[]>());
 	if(!sp_lib_su_env_file_data) {
@@ -321,7 +296,6 @@ ssize_t write_su_env_so_file(const char* str_root_key, const char* implant_so_fu
 
 	// write su folder
 	if(!replace_feature_string_in_buf(const_cast<char*>(static_inline_su_folder), sizeof(static_inline_su_folder), su_folder.data(), sp_lib_su_env_file_data.get(), kernel_root::lib_su_env_file_size)) {
-		ROOT_PRINTF("write su path failed.\n");
 		return ERR_WRITE_SU_ENV_SO_FILE;
 	}
 
@@ -330,19 +304,18 @@ ssize_t write_su_env_so_file(const char* str_root_key, const char* implant_so_fu
 	remove(implant_so_full_path);
     std::ofstream file(std::string(implant_so_full_path), std::ios::binary | std::ios::out);
     if (!file.is_open()) {
-		ROOT_PRINTF("Could not open file %s.\n", implant_so_full_path);
         return ERR_OPEN_FILE;
     }
     file.write(sp_lib_su_env_file_data.get(), kernel_root::lib_su_env_file_size);
     file.close();
 
-	ssize_t err = safe_upx_file(str_root_key, implant_so_full_path);
+	ssize_t err = upx_file(str_root_key, implant_so_full_path);
 	random_expand_file(std::string(implant_so_full_path));
 	RETURN_ON_ERROR(err);
     return ERR_NONE;
 }
 
-ssize_t parasite_implant_su_env(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, std::string_view su_folder) {
+ssize_t unsafe_parasite_implant_su_env(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, std::string_view su_folder) {
 	std::filesystem::path path(original_so_full_path);
 	std::string folder_path = path.parent_path().string();
 	char lib_name[20] = {0};
@@ -360,13 +333,13 @@ ssize_t parasite_implant_su_env(const char* str_root_key, const char* target_pid
 ssize_t safe_parasite_implant_su_env(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, std::string_view su_folder) {
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
-		ssize_t ret = parasite_implant_su_env(str_root_key, target_pid_cmdline, original_so_full_path, su_folder);
+		ssize_t ret = unsafe_parasite_implant_su_env(str_root_key, target_pid_cmdline, original_so_full_path, su_folder);
 		write_errcode_from_child(finfo, ret);
 		_exit(0);
 		return 0;
 	}
 	ssize_t err = ERR_NONE;
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
@@ -376,4 +349,8 @@ ssize_t safe_parasite_implant_su_env(const char* str_root_key, const char* targe
 	return err;
 }
 
+ssize_t parasite_implant_su_env(const char* str_root_key, const char* target_pid_cmdline, const char* original_so_full_path, std::string_view su_folder) {
+	return safe_parasite_implant_su_env(str_root_key, target_pid_cmdline, original_so_full_path, su_folder);
+}
+#endif
 }

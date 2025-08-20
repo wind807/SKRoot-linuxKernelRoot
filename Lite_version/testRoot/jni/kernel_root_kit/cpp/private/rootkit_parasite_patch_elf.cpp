@@ -26,7 +26,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "rootkit_log.h"
 // This is needed for Windows/mingw
 #ifndef O_BINARY
 #define O_BINARY 0
@@ -2181,8 +2180,7 @@ void ElfFile<ElfFileParamNames>::addNeeded(const std::set<std::string> & libs)
 }
 
 template<ElfFileParams>
-void ElfFile<ElfFileParamNames>::printNeededLibs() const
-{
+void ElfFile<ElfFileParamNames>::printNeededLibs() const {
     const auto shdrDynamic = findSectionHeader(".dynamic");
     const auto shdrDynStr = findSectionHeader(".dynstr");
     const char *strTab = (const char *)fileContents->data() + rdi(shdrDynStr.sh_offset);
@@ -2748,8 +2746,7 @@ static void patchElf()
   return std::string(arg);
 }
 
-int internal_parasite_patch_elf(int argc, const char * * argv)
-{
+static int internal_parasite_patch_elf(int argc, const char * * argv) {
     int i;
     for (i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
@@ -2774,8 +2771,7 @@ int internal_parasite_patch_elf(int argc, const char * * argv)
     return 0;
 }
 
-int parasite_check_so_link(const char* original_so_file_path, const char* implant_so_file_path)
-{
+int parasite_check_so_link(const char* original_so_file_path, const char* implant_so_file_path) {
     try {
         printNeededLibsResult.clear();
         const char * print_cmd[] = {"", "--print", original_so_file_path};
@@ -2791,7 +2787,6 @@ int parasite_check_so_link(const char* original_so_file_path, const char* implan
         }
         return 2;
     } catch (std::exception & e) {
-        ROOT_PRINTF(stderr, "parasite_patch_elf: %s\n", e.what());
         return 1;
     }
 }
@@ -2802,7 +2797,6 @@ int parasite_start_link_so(const char* original_so_file_path, const char* implan
         const char * add_cmd[] = {"", "--add", implant_so_file_path, original_so_file_path};
         return internal_parasite_patch_elf(sizeof(add_cmd) / sizeof(add_cmd[0]), add_cmd);
     } catch (std::exception & e) {
-        ROOT_PRINTF(stderr, "parasite_patch_elf: %s\n", e.what());
         return 1;
     }
 }

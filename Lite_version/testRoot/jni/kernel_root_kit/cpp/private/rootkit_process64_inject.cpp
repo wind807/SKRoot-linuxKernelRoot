@@ -20,14 +20,13 @@
 #include "rootkit_ptrace_arm64_utils.h"
 #include "rootkit_maps_helper.h"
 #include "rootkit_elf64_symbol_parser.h"
-#include "rootkit_log.h"
 
 namespace kernel_root {
 
-ssize_t _load_libc64_modify_env_func_addr(
+ssize_t unsafe_load_libc64_modify_env_func_addr(
 	const char* str_root_key,
 	const char* so_path,
-	api_offset_read_mode api_mode,
+	api_offset_read_mode api_offset_mode,
 	size_t& p_mmap_offset,
 	size_t& p_munmap_offset,
 	size_t& p_getenv_offset,
@@ -41,15 +40,14 @@ ssize_t _load_libc64_modify_env_func_addr(
 	func_symbol_map["munmap"] = 0;
 
 	do {
-		if(api_mode == api_offset_read_mode::only_read_myself_mem || api_mode == api_offset_read_mode::all) {
+		if(api_offset_mode == api_offset_read_mode::only_read_myself_mem || api_offset_mode == api_offset_read_mode::all) {
 			bool is_already_loaded = !!get_module_base(-1, so_path);
 			if (is_already_loaded) {
-				ROOT_PRINTF("myself have this so.\n");
 				ret = find_mem_elf64_symbol_address(so_path, func_symbol_map);
 				break;
 			}
 		}
-		if(api_mode == api_offset_read_mode::only_read_file || api_mode == api_offset_read_mode::all) {
+		if(api_offset_mode == api_offset_read_mode::only_read_file || api_offset_mode == api_offset_read_mode::all) {
 			ret = read_elf64_file_symbol_addr(so_path, func_symbol_map);
 			break;
 		}
@@ -62,7 +60,7 @@ ssize_t _load_libc64_modify_env_func_addr(
 	return ret;
 }
 
-ssize_t inject_process_env64_PATH(
+ssize_t unsafe_inject_process_env64_PATH(
 	int target_pid,
 	const char* libc64_so_path,
 	size_t& p_mmap_offset,
@@ -93,7 +91,7 @@ ssize_t inject_process_env64_PATH(
 		input_env_buf_size = getpagesize();
 	}
 
-	ROOT_PRINTF("[+] Injecting process: %d\n", target_pid);
+	//printf("[+] Injecting process: %d\n", target_pid);
 
 	//①ATTATCH，指定目标进程，开始调试  
 	if (ptrace_attach(target_pid) == -1) {
@@ -119,7 +117,7 @@ ssize_t inject_process_env64_PATH(
 	//获取远程pid的某个模块的起始地址  
 	remote_libc64_handle = (size_t)get_module_base(target_pid, libc64_so_path);
 	if (remote_libc64_handle == 0) {
-		ROOT_PRINTF("[+] get_module_base failed.\n");
+		//printf("[+] get_module_base failed.\n");
 		goto _deatch;
 	}
 	mmap_addr = p_mmap_offset ? remote_libc64_handle + p_mmap_offset : 0;
@@ -127,10 +125,10 @@ ssize_t inject_process_env64_PATH(
 	getenv_addr = p_getenv_offset ? remote_libc64_handle + p_getenv_offset : 0;
 	setenv_addr = p_setenv_offset ? remote_libc64_handle + p_setenv_offset : 0;
 
-	ROOT_PRINTF("[+] Remote mmap address: %p\n", (void*)mmap_addr);
-	ROOT_PRINTF("[+] Remote munmap address: %p\n", (void*)munmap_addr);
-	ROOT_PRINTF("[+] Remote getenv address: %p\n", (void*)getenv_addr);
-	ROOT_PRINTF("[+] Remote setenv address: %p\n", (void*)setenv_addr);
+	//printf("[+] Remote mmap address: %p\n", (void*)mmap_addr);
+	//printf("[+] Remote munmap address: %p\n", (void*)munmap_addr);
+	//printf("[+] Remote getenv address: %p\n", (void*)getenv_addr);
+	//printf("[+] Remote setenv address: %p\n", (void*)setenv_addr);
 
 	/* call mmap (null, 0x4000, PROT_READ | PROT_WRITE | PROT_EXEC,
 							 MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
@@ -162,7 +160,7 @@ ssize_t inject_process_env64_PATH(
 	ret_getenv = (char*)ptrace_retval(&regs);
 	if (!ret_getenv) {
 		//getenv error
-		ROOT_PRINTF("getenv error\n");
+		//printf("getenv error\n");
 		goto _recovery;
 	}
 	str_cur_path += add_path;
@@ -176,7 +174,7 @@ ssize_t inject_process_env64_PATH(
 	} while (tmp_read_byte[0] != '\x00');
 
 
-	ROOT_PRINTF("[+] Remote cur path: %s\n", str_cur_path.c_str());
+	//printf("[+] Remote cur path: %s\n", str_cur_path.c_str());
 
 	//写PATH变量进mmap出来的内存
 	ptrace_writedata(target_pid, map_base + strlen(str_flag_path) + 1, (uint8_t*)str_cur_path.c_str(), str_cur_path.length() + 1);
@@ -191,7 +189,7 @@ ssize_t inject_process_env64_PATH(
 	}
 	if (ptrace_retval(&regs)) {
 		//setenv error
-		ROOT_PRINTF("setenv error\n");
+		//printf("setenv error\n");
 		goto _recovery;
 	}
 
@@ -204,7 +202,7 @@ ssize_t inject_process_env64_PATH(
 	}
 
 	ret = 0;
-	//ROOT_PRINTF("Press enter to detach\n");
+	////printf("Press enter to detach\n");
 	//getchar();
 
 	/* restore */
@@ -215,8 +213,8 @@ _deatch:ptrace_detach(target_pid);
 _ret:	return ret;
 }
 
-ssize_t inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path,
-	api_offset_read_mode api_mode /* = api_offset_read_mode::all*/) {
+ssize_t unsafe_inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path,
+	api_offset_read_mode api_offset_mode /* = api_offset_read_mode::all*/) {
 	if (kernel_root::get_root(str_root_key) != ERR_NONE) {
 		return ERR_NO_ROOT;
 	}
@@ -238,30 +236,30 @@ ssize_t inject_process_env64_PATH_wrapper(const char* str_root_key, int target_p
 	if (target_process_libc_so_path.empty()) {
 		return ERR_LIBC_PATH_EMPTY;
 	}
-	ROOT_PRINTF("target_process_libc_so_path:%s\n", target_process_libc_so_path.c_str());
+	//printf("target_process_libc_so_path:%s\n", target_process_libc_so_path.c_str());
 
 	size_t p_mmap_offset;
 	size_t p_munmap_offset;
 	size_t p_getenv_offset;
 	size_t p_setenv_offset;
-	ssize_t ret = _load_libc64_modify_env_func_addr(
+	ssize_t ret = unsafe_load_libc64_modify_env_func_addr(
 		str_root_key,
 		target_process_libc_so_path.c_str(),
-		api_mode,
+		api_offset_mode,
 		p_mmap_offset,
 		p_munmap_offset,
 		p_getenv_offset,
 		p_setenv_offset);
-	ROOT_PRINTF("_load_libc64_modify_env_func_addr error:%d\n", ret);
+	//printf("_load_libc64_modify_env_func_addr error:%d\n", ret);
 	RETURN_ON_ERROR(ret);
-	ROOT_PRINTF("p_mmap_offset:%zu\n", p_mmap_offset);
-	ROOT_PRINTF("p_munmap_offset:%zu\n", p_munmap_offset);
-	ROOT_PRINTF("p_getenv_offset:%zu\n", p_getenv_offset);
-	ROOT_PRINTF("p_setenv_offset:%zu\n", p_setenv_offset);
+	//printf("p_mmap_offset:%zu\n", p_mmap_offset);
+	//printf("p_munmap_offset:%zu\n", p_munmap_offset);
+	//printf("p_getenv_offset:%zu\n", p_getenv_offset);
+	//printf("p_setenv_offset:%zu\n", p_setenv_offset);
 	if(!p_mmap_offset || !p_munmap_offset || !p_getenv_offset || !p_setenv_offset) {
 		return ERR_LOAD_LIBC_FUNC_ADDR;
 	}
-	if (inject_process_env64_PATH(target_pid, target_process_libc_so_path.c_str(), p_mmap_offset, p_munmap_offset, p_getenv_offset, p_setenv_offset, add_path) != 0) {
+	if (unsafe_inject_process_env64_PATH(target_pid, target_process_libc_so_path.c_str(), p_mmap_offset, p_munmap_offset, p_getenv_offset, p_setenv_offset, add_path) != 0) {
 		return ERR_INJECT_PROC64_ENV;
 	}
 	return ERR_NONE;
@@ -269,7 +267,7 @@ ssize_t inject_process_env64_PATH_wrapper(const char* str_root_key, int target_p
 
 
 ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path,
-	api_offset_read_mode api_mode /* = api_offset_read_mode::all*/) {
+	api_offset_read_mode api_offset_mode /* = api_offset_read_mode::all*/) {
 	ssize_t out_err;
 	std::string libc_path;
 	fork_pipe_info finfo;
@@ -288,7 +286,7 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 		_exit(0);
 		return {};
 	}
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		out_err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, out_err)) {
@@ -302,29 +300,29 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 		out_err = ERR_LIBC_PATH_EMPTY;
 		return out_err;
 	}
-	ROOT_PRINTF("target_process_libc_so_path:%s\n", libc_path.c_str());
+	//printf("target_process_libc_so_path:%s\n", libc_path.c_str());
 
 
 	size_t p_mmap_offset;
 	size_t p_munmap_offset;
 	size_t p_getenv_offset;
 	size_t p_setenv_offset;
-	out_err = _load_libc64_modify_env_func_addr(
+	out_err = unsafe_load_libc64_modify_env_func_addr(
 		str_root_key,
 		libc_path.c_str(),
-		api_mode,
+		api_offset_mode,
 		p_mmap_offset,
 		p_munmap_offset,
 		p_getenv_offset,
 		p_setenv_offset);
 
-	ROOT_PRINTF("_load_libc64_modify_env_func_addr error:%zd\n", out_err);
+	//printf("_load_libc64_modify_env_func_addr error:%zd\n", out_err);
 	RETURN_ON_ERROR(out_err);
 
-	ROOT_PRINTF("p_mmap_offset:%zu\n", p_mmap_offset);
-	ROOT_PRINTF("p_munmap_offset:%zu\n", p_munmap_offset);
-	ROOT_PRINTF("p_getenv_offset:%zu\n", p_getenv_offset);
-	ROOT_PRINTF("p_setenv_offset:%zu\n", p_setenv_offset);
+	//printf("p_mmap_offset:%zu\n", p_mmap_offset);
+	//printf("p_munmap_offset:%zu\n", p_munmap_offset);
+	//printf("p_getenv_offset:%zu\n", p_getenv_offset);
+	//printf("p_setenv_offset:%zu\n", p_setenv_offset);
 
 	if(!p_mmap_offset || !p_munmap_offset || !p_getenv_offset || !p_setenv_offset) {
 		return ERR_LOAD_LIBC_FUNC_ADDR;
@@ -334,7 +332,7 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 	out_err = ERR_NONE;
 	if(fork_pipe_child_process(finfo)) {
 		if (kernel_root::get_root(str_root_key) == 0) {
-			out_err = inject_process_env64_PATH(target_pid, libc_path.c_str(), p_mmap_offset, p_munmap_offset, p_getenv_offset, p_setenv_offset, add_path);
+			out_err = unsafe_inject_process_env64_PATH(target_pid, libc_path.c_str(), p_mmap_offset, p_munmap_offset, p_getenv_offset, p_setenv_offset, add_path);
 		} else {
 			out_err = ERR_NO_ROOT;
 		}
@@ -343,7 +341,7 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 		return {};
 	}
 	
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		out_err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, out_err)) {
@@ -353,8 +351,12 @@ ssize_t safe_inject_process_env64_PATH_wrapper(const char* str_root_key, int tar
 	return out_err;
 }
 
+ssize_t inject_process_env64_PATH_wrapper(const char* str_root_key, int target_pid, const char* add_path,
+	api_offset_read_mode api_offset_mode /* = api_offset_read_mode::all*/) {
+	return safe_inject_process_env64_PATH_wrapper(str_root_key, target_pid, add_path, api_offset_mode);
+}
 
-ssize_t kill_process(const char* str_root_key, pid_t pid) {
+ssize_t unsafe_kill_process(const char* str_root_key, pid_t pid) {
 	ssize_t err = ERR_NONE;
 	if (kernel_root::get_root(str_root_key) == 0) {
 		if(kill(pid, SIGKILL) != 0) {
@@ -367,8 +369,6 @@ ssize_t kill_process(const char* str_root_key, pid_t pid) {
 }
 
 ssize_t safe_kill_process(const char* str_root_key, pid_t pid) {
-
-
 	fork_pipe_info finfo;
 	if(fork_pipe_child_process(finfo)) {
 		ssize_t err = kill_process(str_root_key, pid);
@@ -377,7 +377,7 @@ ssize_t safe_kill_process(const char* str_root_key, pid_t pid) {
 		return 0;
 	}
 	ssize_t err = ERR_NONE;
-	if(!wait_fork_child_process(finfo)) {
+	if(!is_fork_child_process_work_finished(finfo)) {
 		err = ERR_WAIT_FORK_CHILD;
 	} else {
 		if(!read_errcode_from_child(finfo, err)) {
@@ -385,5 +385,9 @@ ssize_t safe_kill_process(const char* str_root_key, pid_t pid) {
 		}
 	}
 	return err;
+}
+
+ssize_t kill_process(const char* str_root_key, pid_t pid) {
+	return safe_kill_process(str_root_key, pid);
 }
 }

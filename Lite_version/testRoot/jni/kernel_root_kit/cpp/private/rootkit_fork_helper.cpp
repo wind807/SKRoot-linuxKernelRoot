@@ -1,4 +1,3 @@
-#pragma once
 #include <string.h>
 #include <unistd.h>
 #include <iostream>
@@ -12,52 +11,42 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
-#include "rootkit_err_def.h"
+#include "rootkit_umbrella.h"
 
 #define BUF_SIZE 4096
 namespace kernel_root {
-    class fork_base_info {
-    public:
-        fork_base_info() { reset(); }
-        ~fork_base_info() { close(); }
-        int fd_read_parent = -1;
-        int fd_write_parent = -1;
-        int fd_read_child = -1;
-        int fd_write_child = -1;
-        pid_t parent_pid = getpid();
-        pid_t child_pid = 0;
-        
-        void reset() {
-            close();
-            fd_read_parent = -1;
-            fd_write_parent = -1;
-            fd_read_child = -1;
-            fd_write_child = -1;
-            parent_pid = getpid();
-            child_pid = 0;
-        }
+fork_base_info::fork_base_info() { reset(); }
+fork_base_info::~fork_base_info() { close(); }
+void fork_base_info::reset() {
+    close();
+    fd_read_parent = -1;
+    fd_write_parent = -1;
+    fd_read_child = -1;
+    fd_write_child = -1;
+    parent_pid = getpid();
+    child_pid = 0;
+}
 
-        void close() {
-            if (fd_read_parent != -1) {
-                ::close(fd_read_parent);
-                fd_read_parent = -1;
-            }
-            if (fd_write_parent != -1) {
-                ::close(fd_write_parent);
-                fd_write_parent = -1;
-            }
-            if (fd_read_child != -1) {
-                ::close(fd_read_child);
-                fd_read_child = -1;
-            }
-            if (fd_write_child != -1) {
-                ::close(fd_write_child);
-                fd_write_child = -1;
-            }
-        }
-    };
-class fork_pipe_info : public fork_base_info {};
-static bool fork_pipe_child_process(fork_pipe_info & finfo) {
+void fork_base_info::close() {
+    if (fd_read_parent != -1) {
+        ::close(fd_read_parent);
+        fd_read_parent = -1;
+    }
+    if (fd_write_parent != -1) {
+        ::close(fd_write_parent);
+        fd_write_parent = -1;
+    }
+    if (fd_read_child != -1) {
+        ::close(fd_read_child);
+        fd_read_child = -1;
+    }
+    if (fd_write_child != -1) {
+        ::close(fd_write_child);
+        fd_write_child = -1;
+    }
+}
+
+bool fork_pipe_child_process(fork_pipe_info & finfo) {
     int fd_parent_to_child[2]; // 父进程写，子进程读
     int fd_child_to_parent[2]; // 子进程写，父进程读
 
@@ -90,7 +79,7 @@ static bool fork_pipe_child_process(fork_pipe_info & finfo) {
 }
 
 
-static bool wait_fork_child_process(const fork_base_info & finfo) {
+bool is_fork_child_process_work_finished(const fork_base_info & finfo) {
 	if(finfo.child_pid == 0) {
 		return false;
 	}
@@ -108,7 +97,7 @@ static bool wait_fork_child_process(const fork_base_info & finfo) {
 	}
 }
 
-static bool write_transfer_data_from_child(const fork_pipe_info & finfo, void* data, size_t data_len) {
+bool write_transfer_data_from_child(const fork_pipe_info & finfo, void* data, size_t data_len) {
 	if(write(finfo.fd_write_child, &data_len, sizeof(data_len))!=sizeof(data_len)) {
 		return false;
 	}
@@ -121,7 +110,7 @@ static bool write_transfer_data_from_child(const fork_pipe_info & finfo, void* d
 	return false;
 }
 
-static bool read_transfer_data_from_child(fork_pipe_info & finfo, void* &data, size_t &data_len) {
+bool read_transfer_data_from_child(fork_pipe_info & finfo, void* &data, size_t &data_len) {
 	data_len = 0;
 	if(read(finfo.fd_read_child , (void*)&data_len, sizeof(data_len))!=sizeof(data_len)) {
 		return false;
@@ -137,14 +126,14 @@ static bool read_transfer_data_from_child(fork_pipe_info & finfo, void* &data, s
 	return true;
 }
 
-static bool write_errcode_from_child(const fork_pipe_info & finfo, ssize_t errCode) {
+bool write_errcode_from_child(const fork_pipe_info & finfo, ssize_t errCode) {
 	if(write(finfo.fd_write_child, &errCode, sizeof(errCode))==sizeof(errCode)) {
 		return true;
 	}
 	return false;
 }
 
-static bool read_errcode_from_child(const fork_pipe_info & finfo, ssize_t & errCode) {
+bool read_errcode_from_child(const fork_pipe_info & finfo, ssize_t & errCode) {
     ssize_t n = read(finfo.fd_read_child, &errCode, sizeof(errCode));
     if (n == sizeof(errCode)) {
         return true;
@@ -155,35 +144,35 @@ static bool read_errcode_from_child(const fork_pipe_info & finfo, ssize_t & errC
 	return false;
 }
 
-static bool write_int_from_child(const fork_pipe_info & finfo, int n) {
+bool write_int_from_child(const fork_pipe_info & finfo, int n) {
 	if(write(finfo.fd_write_child, &n, sizeof(n))==sizeof(n)) {
 		return true;
 	}
 	return false;
 }
 
-static bool read_int_from_child(const fork_pipe_info & finfo, int & n) {
+bool read_int_from_child(const fork_pipe_info & finfo, int & n) {
 	if(read(finfo.fd_read_child, (void*)&n, sizeof(n))==sizeof(n)) {
 		return true;
 	}
 	return false;
 }
 
-static bool write_uint64_from_child(const fork_pipe_info & finfo, uint64_t n) {
+bool write_uint64_from_child(const fork_pipe_info & finfo, uint64_t n) {
 	if(write(finfo.fd_write_child, &n, sizeof(n))==sizeof(n)) {
 		return true;
 	}
 	return false;
 }
 
-static bool read_uint64_from_child(const fork_pipe_info & finfo, uint64_t & n) {
+bool read_uint64_from_child(const fork_pipe_info & finfo, uint64_t & n) {
 	if(read(finfo.fd_read_child, (void*)&n, sizeof(n))==sizeof(n)) {
 		return true;
 	}
 	return false;
 }
 
-static bool write_set_int_from_child(const fork_pipe_info & finfo, const std::set<int> & s) {
+bool write_set_int_from_child(const fork_pipe_info & finfo, const std::set<int> & s) {
 	size_t total_size = sizeof(int) * s.size();
 	std::vector<char> buffer(total_size);
 	char* ptr = buffer.data();
@@ -195,7 +184,7 @@ static bool write_set_int_from_child(const fork_pipe_info & finfo, const std::se
 	return write_transfer_data_from_child(finfo, buffer.data(), total_size);
 }
 
-static bool read_set_int_from_child(fork_pipe_info & finfo, std::set<int> & s) {
+bool read_set_int_from_child(fork_pipe_info & finfo, std::set<int> & s) {
 	void* data = nullptr;
 	size_t data_len = 0;
 
@@ -220,11 +209,11 @@ static bool read_set_int_from_child(fork_pipe_info & finfo, std::set<int> & s) {
 }
 
 
-static bool write_string_from_child(const fork_pipe_info & finfo, const std::string &text) {
+bool write_string_from_child(const fork_pipe_info & finfo, const std::string &text) {
 	return write_transfer_data_from_child(finfo, (void*)text.c_str(), text.length());
 }
 
-static bool read_string_from_child(fork_pipe_info & finfo, std::string &text) {
+bool read_string_from_child(fork_pipe_info & finfo, std::string &text) {
 	void * data = nullptr;
 	size_t len = 0;
 	bool r = read_transfer_data_from_child(finfo, data, len);
@@ -236,7 +225,7 @@ static bool read_string_from_child(fork_pipe_info & finfo, std::string &text) {
 }
 
 
-static bool write_set_string_from_child(const fork_pipe_info & finfo, const std::set<std::string> &s) {
+bool write_set_string_from_child(const fork_pipe_info & finfo, const std::set<std::string> &s) {
     size_t total_size = 0;
     for (const auto &str : s) {
         total_size += sizeof(size_t);
@@ -258,7 +247,7 @@ static bool write_set_string_from_child(const fork_pipe_info & finfo, const std:
 }
 
 
-static bool read_set_string_from_child(fork_pipe_info &finfo, std::set<std::string> &s) {
+bool read_set_string_from_child(fork_pipe_info &finfo, std::set<std::string> &s) {
     void* data = nullptr;
     size_t data_len = 0;
     if (!read_transfer_data_from_child(finfo, data, data_len)) {
@@ -286,7 +275,7 @@ static bool read_set_string_from_child(fork_pipe_info &finfo, std::set<std::stri
 }
 
 
-static bool write_map_i_s_from_child(const fork_pipe_info & finfo, const std::map<int, std::string> & map) {
+bool write_map_i_s_from_child(const fork_pipe_info & finfo, const std::map<int, std::string> & map) {
     size_t total_size = 0;
     for (const auto &pair : map) {
         total_size += sizeof(int);
@@ -312,7 +301,7 @@ static bool write_map_i_s_from_child(const fork_pipe_info & finfo, const std::ma
     return write_transfer_data_from_child(finfo, buffer.data(), total_size);
 }
 
-static bool read_map_i_s_from_child(fork_pipe_info & finfo, std::map<int, std::string> & map) {
+bool read_map_i_s_from_child(fork_pipe_info & finfo, std::map<int, std::string> & map) {
     void* data = nullptr;
     size_t data_len = 0;
     if (!read_transfer_data_from_child(finfo, data, data_len)) {
@@ -343,7 +332,7 @@ static bool read_map_i_s_from_child(fork_pipe_info & finfo, std::map<int, std::s
     return true;
 }
 
-static bool write_map_s_i_from_child(const fork_pipe_info & finfo, const std::map<std::string, int> & map) {
+bool write_map_s_i_from_child(const fork_pipe_info & finfo, const std::map<std::string, int> & map) {
     size_t total_size = 0;
     for (const auto &pair : map) {
         total_size += pair.first.size();
@@ -368,7 +357,7 @@ static bool write_map_s_i_from_child(const fork_pipe_info & finfo, const std::ma
     return write_transfer_data_from_child(finfo, buffer.data(), total_size);
 }
 
-static bool read_map_s_i_from_child(fork_pipe_info & finfo, std::map<std::string, int> & map) {
+bool read_map_s_i_from_child(fork_pipe_info & finfo, std::map<std::string, int> & map) {
     void* data = nullptr;
     size_t data_len = 0;
     if (!read_transfer_data_from_child(finfo, data, data_len)) {
