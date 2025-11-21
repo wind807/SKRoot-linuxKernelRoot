@@ -21,7 +21,7 @@ void arm64_module_asm_func_end(asmjit::a64::Assembler* a, asmjit::a64::GpX x);
 /***************************************************************************
  * 在内核态执行 AArch64 汇编函数
  * 参数: root_key       ROOT权限密钥文本
- *      func_bytes      待执行的内核汇编函数机器码 (必须在开头调用 arm64_module_asm_func_start，结尾调用 arm64_module_asm_func_end，否则不合法)。
+ *      func_bytes      待执行的内核函数机器码 (函数必须在开头调用 arm64_module_asm_func_start，结尾调用 arm64_module_asm_func_end，否则不合法)。
  *      output_result   [输出] 函数返回的 64 位结果。仅当返回 KModErr::OK 时有效。
  *
  * 返回: OK 执行成功，output_result 已填充
