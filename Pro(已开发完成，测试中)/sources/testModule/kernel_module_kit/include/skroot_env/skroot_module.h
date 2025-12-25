@@ -5,7 +5,6 @@
 #include "skroot_installer.h"
 
 namespace skroot_env {
-#pragma pack(push, 1)
 struct module_desc {
     char name[1024] = {0};              // SKRoot 模块名称
     char version[1024] = {0};           // SKRoot 模块版本
@@ -15,8 +14,8 @@ struct module_desc {
     char update_json[1024] = {0};       // SKRoot 更新信息
     bool web_ui = false;
     SkrootSdkVersion min_sdk_ver = {0};
-};
-#pragma pack(pop)
+} __attribute__((packed));
+
 enum class ModuleListMode : uint8_t {
     All = 0,      // 默认：全部已安装模块
     RunningOnly,  // 仅当前正在运行的模块
@@ -44,9 +43,10 @@ KModErr parse_module_desc_from_zip_file(const char* root_key, const char* module
 * 安装模块
 * 参数: root_key            ROOT权限密钥文本
 *       module_zip_path     模块 ZIP 文件路径
+*       out_reason          [输出] 若模块拒绝安装，则返回拒绝原因文本；
 * 返回: OK     表示调用成功；其他值为错误码
 ***************************************************************************/
-KModErr install_module(const char* root_key, const char* module_zip_path);
+KModErr install_module(const char* root_key, const char* module_zip_path, std::string& out_reason);
 
 /***************************************************************************
 * 卸载模块

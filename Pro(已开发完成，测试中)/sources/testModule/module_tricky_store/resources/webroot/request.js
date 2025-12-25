@@ -28,6 +28,16 @@
     const resp = await postText('/setFixTeeToggle', content);
     return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
   }
+
+  async function getHideBootloaderToggle() {
+    const resp = await postText('/getHideBootloaderToggle');
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
+
+  async function setHideBootloaderToggle(content) {
+    const resp = await postText('/setHideBootloaderToggle', content);
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
   
   async function getTargetTxt() {
     const resp = await postText('/getTargetTxt');
@@ -49,16 +59,35 @@
     return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
   }
 
+  async function getBootloaderScript() {
+    const resp = await postText('/getBootloaderScript');
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
 
+  async function setBootloaderScript(content) {
+    const resp = await postText('/setBootloaderScript', content);
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
+
+  async function getAllProps() {
+    const resp = await postText('/getAllProps');
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
+  
   return {
     getVersion,
     getAutoThirdAppToggle,
     setAutoThirdAppToggle,
     getFixTeeToggle,
     setFixTeeToggle,
+    getHideBootloaderToggle,
+    setHideBootloaderToggle,
     getTargetTxt,
     setTargetTxt,
     getKeyboxXml,
     setKeyboxXml,
+    getBootloaderScript,
+    setBootloaderScript,
+    getAllProps,
   };
 })();

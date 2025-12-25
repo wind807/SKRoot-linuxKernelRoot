@@ -3,6 +3,7 @@ const $verSpan = document.getElementById('module-version');
 
 const $autoThirdAppToggle = document.getElementById("toggle-auto-third-app");
 const $fixTeeToggle = document.getElementById("toggle-fix-tee");
+const $hideBootloaderToggle = document.getElementById("toggle-hide-bl");
 
 const $targetEditor = document.getElementById("target-editor");
 const $btnCopyTarget = document.getElementById("btn-copy-target");
@@ -13,12 +14,19 @@ const $keyboxEditor = document.getElementById("keybox-editor");
 const $btnCopyKeybox = document.getElementById("btn-copy-keybox");
 const $btnPasteKeybox = document.getElementById("btn-paste-keybox");
 const $btnSaveKeybox = document.getElementById("btn-save-keybox");
+	
+const $bootloaderScriptEditor = document.getElementById("bl-script-editor");
+const $btnDebug = document.getElementById('btn-debug-props');
 
+const $btnCopyBootloader = document.getElementById("btn-copy-bl");
+const $btnPasteBootloader = document.getElementById("btn-paste-bl");
+const $btnSaveBootloader = document.getElementById("btn-save-bl");
 
 async function loadSettings() {
 	try {
 		$autoThirdAppToggle.checked = (await RequestApi.getAutoThirdAppToggle()) == "1";
 		$fixTeeToggle.checked = (await RequestApi.getFixTeeToggle()) == "1";
+		$hideBootloaderToggle.checked = (await RequestApi.getHideBootloaderToggle()) == "1";
 
 	} catch (err) {
 		console.error('读取配置失败:', err);
@@ -30,6 +38,7 @@ async function saveSettings() {
 	try {
 		if ((await RequestApi.setAutoThirdAppToggle($autoThirdAppToggle.checked ? "1" : "0")) !== 'OK') throw new Error(result);
 		if ((await RequestApi.setFixTeeToggle($fixTeeToggle.checked ? "1" : "0")) !== 'OK') throw new Error(result);
+		if ((await RequestApi.setHideBootloaderToggle($hideBootloaderToggle.checked ? "1" : "0")) !== 'OK') throw new Error(result);
 		
 		showToast("设置成功，重启生效");
 		return true;
@@ -89,6 +98,60 @@ async function saveKeyboxXml() {
 	}
 }
 
+async function loadBootloaderScript() {
+	try {
+		$bootloaderScriptEditor.value = await RequestApi.getBootloaderScript();
+	} catch (err) {
+		console.error('读取脚本失败:', err);
+		alert('读取脚本失败：' + (err instanceof Error ? err.message : String(err)));
+	}
+}
+
+async function saveBootloaderScript() {
+	try {
+		const result = await RequestApi.setBootloaderScript($bootloaderScriptEditor.value);
+		if (result !== 'OK') {
+			alert('保存失败：' + result);
+			return false;
+		}
+		showToast("已保存，重启生效");
+		return true;
+	} catch (err) {
+		console.error('保存脚本失败:', err);
+		alert('保存脚本失败：' + (err instanceof Error ? err.message : String(err)));
+		return false;
+	}
+}
+
+async function showAllPropsModal() {
+	const modal = document.getElementById('debug-modal');
+	const btnCloseModal = document.getElementById('btn-close-modal');
+	const btnCopyDebug = document.getElementById('btn-copy-debug');
+	const debugOutput = document.getElementById('debug-output');
+
+    debugOutput.value = "正在读取系统属性 (Running getprop)...";
+	modal.classList.remove('hidden');
+	
+	const closeModal = () => {
+        modal.classList.add('hidden');
+    };
+    btnCloseModal.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    btnCopyDebug.addEventListener('click', () => {
+        copyToClipboard(debugOutput.value);
+		showToast("已复制");
+    });
+
+   try {
+		debugOutput.value = await RequestApi.getAllProps();
+	} catch (err) {
+		debugOutput.value = "获取属性失败:\n" + (err instanceof Error ? err.message : String(err));
+	}
+}
+
 function copyToClipboard(text) {
 	let tempTextarea = document.createElement('textarea');
 	document.body.appendChild(tempTextarea);
@@ -117,6 +180,10 @@ function render() {
 	});
 
 	$fixTeeToggle.addEventListener("change", async function () {
+		await saveSettings();
+	});
+	
+	$hideBootloaderToggle.addEventListener("change", async function () {
 		await saveSettings();
 	});
 	
@@ -159,6 +226,30 @@ function render() {
 	$btnSaveKeybox.addEventListener("click", async function () {
 		await saveKeyboxXml();
 	});
+	
+	$btnCopyBootloader.addEventListener("click", async function () {
+		copyToClipboard($bootloaderScriptEditor.value);
+		showToast("已复制");
+	});
+	
+	$btnPasteBootloader.addEventListener("click", async () => {
+	  const text = await readClipboardText();
+	  if (typeof text === "string" && text.length) {
+		if (!confirm("将剪贴板内容覆盖全文？")) return;
+		$bootloaderScriptEditor.value = text;
+	  } else {
+		alert("当前浏览器限制，无法读取剪贴板，请长按文本框手动粘贴。");
+		$bootloaderScriptEditor.focus();
+	  }
+	});
+	
+	$btnSaveBootloader.addEventListener("click", async function () {
+		await saveBootloaderScript();
+	});
+	
+	$btnDebug.addEventListener('click', async () => {
+        showAllPropsModal();
+    });
 }
 
 async function initVersion() {
@@ -178,6 +269,7 @@ async function onReady() {
 	await loadSettings();
 	await loadTargetTxt();
 	await loadKeyboxXml();
+	await loadBootloaderScript();
 	render();
 }
 document.addEventListener('DOMContentLoaded', onReady);
