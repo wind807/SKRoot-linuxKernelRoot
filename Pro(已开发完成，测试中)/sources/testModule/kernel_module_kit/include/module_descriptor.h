@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "____DO_NOT_EDIT____/private_desc_parser.h"
-#include "module_base_web_ui_server.h"
+#include "module_web_ui_http_handler.h"
 #include "module_base_install_callback.h"
 
 /***************************************************************************
@@ -41,10 +41,10 @@ int skroot_module_main(const char* root_key, const char* module_private_dir);
 // WebUI（可选）：Web管理页面
 #define SKROOT_MODULE_WEB_UI(WebUIHandlerClass)     ___MOD_WEB_UI(WebUIHandlerClass)
 
-// 安装模块回调（可选）：可拒绝安装。参考：module_base_install_callback.h
+// 安装模块回调（可选）：可拒绝安装。参考：module_install_callback.h
 #define SKROOT_MODULE_ON_INSTALL(callback)      ___MOD_ON_INSTALL(callback)
 
-// 卸载模块回调（可选）：用于清理与收尾。参考：module_base_install_callback.h
+// 卸载模块回调（可选）：用于清理与收尾。参考：module_install_callback.h
 #define SKROOT_MODULE_ON_UNINSTALL(callback)    ___MOD_ON_UNINSTALL(callback)
 
 // 更新 JSON（可选）：如"https://example.com/xxx.json"
