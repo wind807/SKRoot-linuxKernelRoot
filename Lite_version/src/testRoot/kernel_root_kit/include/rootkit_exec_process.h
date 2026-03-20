@@ -8,11 +8,15 @@
 
 namespace kernel_root {
 /***************************************************************************
- * 以ROOT身份直接执行程序（exec）
+ * 以 ROOT 身份执行指定程序（execve）
  * 参数:
- *   str_root_key  ROOT 权限密钥文本
- *   file_path     目标可执行文件的绝对路径
- * 返回: OK 表示成功
+ *   str_root_key		ROOT 权限密钥文本
+ *   cmdline				要执行的命令行文本，格式为“可执行文件路径 + 参数”
+ *								例如：
+ *									"/system/bin/ls /data/local/tmp"
+ *									"/system/bin/sh /data/local/tmp/test.sh"
+ *								当前实现仅支持按空格分割参数
+ * 返回: OK 表示执行成功，其他值表示失败
  ***************************************************************************/
-KRootErr root_exec_process(const char* str_root_key, const char *file_path);
+KRootErr root_exec_process(const char* str_root_key, const char *cmdline);
 }

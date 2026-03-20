@@ -14,30 +14,25 @@ size_t PatchCurrentAvcCheck::patch_current_avc_check_bl_func(const SymbolRegion&
 	if (hook_func_start_addr == 0) { return 0; }
 	std::cout << "Start hooking addr:  " << std::hex << hook_func_start_addr << std::endl << std::endl;
 
-	int atomic_usage_len = get_cred_atomic_usage_len();
-	int cred_euid_start_pos = get_cred_euid_offset();
-	int uid_region_len = get_cred_uid_region_len();
-	int securebits_padding = get_cred_securebits_padding();
-	int securebits_len = 4 + securebits_padding;
-	uint64_t cap_ability_max = get_cap_ability_max();
-	int cap_cnt = get_cap_cnt();
+	InitCredResult cred_result = m_init_cred_searcher.get_init_cred_result();
+	int cred_uid_region_size = sizeof(cred_uid_info);
+	int cred_euid_start_pos = cred_result.atomic_usage_size + offsetof(cred_uid_info, euid);
 
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
 	auto a = asm_ctx.assembler();
 	Label label_end = a->newLabel();
 	Label label_allow = a->newLabel();
 	Label label_cycle_cap = a->newLabel();
-
 	a->mov(x10, xzr);
 	emit_get_current(a, x11);
 	a->ldr(x11, ptr(x11, task_struct_cred_offset));
 	a->ldr(w12, ptr(x11, cred_euid_start_pos));
 	a->cbnz(w12, label_end);
-	a->add(x11, x11, Imm(atomic_usage_len + uid_region_len));
-	a->ldr(w13, ptr(x11).post(securebits_len));
+	a->add(x11, x11, Imm(cred_result.atomic_usage_size + cred_uid_region_size));
+	a->ldr(w13, ptr(x11).post(cred_result.securebits_size));
 	a->cbnz(w13, label_end);
-	a->mov(x12, Imm(cap_ability_max));
-	a->mov(x13, Imm(cap_cnt));
+	a->mov(x12, Imm(cred_result.cap_ability_max));
+	a->mov(x13, Imm(cred_result.cap_cnt));
 	a->bind(label_cycle_cap);
 	a->ldr(x14, ptr(x11).post(8));
 	a->cmp(x14, x12);

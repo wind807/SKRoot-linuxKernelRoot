@@ -94,6 +94,9 @@ CAPSTONE_SRCS := \
   3rdparty/capstone-5.0.7/src/SStream.c \
   3rdparty/capstone-5.0.7/src/utils.c
 
+CJSON_SRCS := \
+  3rdparty/cJSON/cJSON.cpp
+
 PROJECT_SRCS := \
   analyze/kallsyms_lookup_name.cpp \
   analyze/kallsyms_lookup_name_4_6_0.cpp \
@@ -102,6 +105,7 @@ PROJECT_SRCS := \
   analyze/kallsyms_lookup_name_6_1_60.cpp \
   analyze/kallsyms_lookup_name_6_4_0.cpp \
   analyze/kallsyms_lookup_name_6_12_0.cpp \
+  analyze/init_cred_searcher.cpp \
   analyze/kernel_symbol_parser.cpp \
   analyze/kernel_version_parser.cpp \
   analyze/symbol_analyze.cpp \
@@ -113,7 +117,7 @@ PROJECT_SRCS := \
   patch_filldir64.cpp \
   patch_kernel_root.cpp
 
-SRCS_CPP := $(ASMJIT_SRCS) $(PROJECT_SRCS)
+SRCS_CPP := $(ASMJIT_SRCS)  $(CJSON_SRCS) $(PROJECT_SRCS)
 SRCS_C   := $(CAPSTONE_SRCS)
 
 OBJS_CPP := $(SRCS_CPP:.cpp=.o)

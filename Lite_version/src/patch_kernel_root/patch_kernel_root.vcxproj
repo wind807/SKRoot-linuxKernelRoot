@@ -154,6 +154,8 @@
     <ClCompile Include="3rdparty\capstone-5.0.7\src\MCRegisterInfo.c" />
     <ClCompile Include="3rdparty\capstone-5.0.7\src\SStream.c" />
     <ClCompile Include="3rdparty\capstone-5.0.7\src\utils.c" />
+    <ClCompile Include="3rdparty\cJSON\cJSON.cpp" />
+    <ClCompile Include="analyze\init_cred_searcher.cpp" />
     <ClCompile Include="analyze\kallsyms_lookup_name.cpp" />
     <ClCompile Include="analyze\kallsyms_lookup_name_4_6_0.cpp" />
     <ClCompile Include="analyze\kallsyms_lookup_name_6_12_0.cpp" />
@@ -283,10 +285,12 @@
     <ClInclude Include="3rdparty\capstone-5.0.7\src\MCRegisterInfo.h" />
     <ClInclude Include="3rdparty\capstone-5.0.7\src\SStream.h" />
     <ClInclude Include="3rdparty\capstone-5.0.7\src\utils.h" />
+    <ClInclude Include="3rdparty\cJSON\cJSON.h" />
     <ClInclude Include="analyze\aarch64_insn.h" />
     <ClInclude Include="analyze\aarch64_simulate_insn.h" />
     <ClInclude Include="analyze\base_func.h" />
     <ClInclude Include="analyze\find_static_code_start.h" />
+    <ClInclude Include="analyze\init_cred_searcher.h" />
     <ClInclude Include="analyze\kallsyms_lookup_name.h" />
     <ClInclude Include="analyze\kallsyms_lookup_name_4_6_0.h" />
     <ClInclude Include="analyze\kallsyms_lookup_name_6_12_0.h" />

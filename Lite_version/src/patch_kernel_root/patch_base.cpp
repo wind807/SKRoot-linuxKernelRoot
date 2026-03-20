@@ -4,25 +4,16 @@ using namespace asmjit;
 using namespace asmjit::a64;
 using namespace asmjit::a64::Predicate;
 
-struct cred_uid_info {
-	uint32_t uid; /* real UID of the task */
-	uint32_t gid; /* real GID of the task */
-	uint32_t suid; /* saved UID of the task */
-	uint32_t sgid; /* saved GID of the task */
-	uint32_t euid; /* effective UID of the task */
-	uint32_t egid; /* effective GID of the task */
-	uint32_t fsuid; /* UID for VFS ops */
-	uint32_t fsgid; /* GID for VFS ops */
-};
-
 PatchBase::PatchBase(const std::vector<char>& file_buf, size_t cred_uid_offset) : 
-	m_file_buf(file_buf), m_kernel_ver_parser(file_buf), m_cred_uid_offset(cred_uid_offset) {}
+	m_file_buf(file_buf), m_kernel_ver_parser(file_buf), m_init_cred_searcher(file_buf, cred_uid_offset) {
+	IF_EXIT(!m_init_cred_searcher.init());
+}
 
 PatchBase::PatchBase(const PatchBase& other)
 	: m_file_buf(other.m_file_buf)
 	, m_kernel_ver_parser(other.m_file_buf)
-	, m_cred_uid_offset(other.m_cred_uid_offset)
-{}
+	, m_init_cred_searcher(other.m_init_cred_searcher) {
+}
 
 PatchBase::~PatchBase() {}
 
@@ -37,38 +28,6 @@ SymbolRegion PatchBase::skip_pac_bti_at_func_start(const SymbolRegion& symbol) {
 	SymbolRegion new_sym = symbol;
 	new_sym.consume(skip);
 	return new_sym;
-}
-
-int PatchBase::get_cred_atomic_usage_len() {
-	return m_cred_uid_offset;
-}
-
-int PatchBase::get_cred_uid_region_len() {
-	return sizeof(cred_uid_info);
-}
-
-int PatchBase::get_cred_euid_offset() {
-	return get_cred_atomic_usage_len() + offsetof(cred_uid_info, euid);
-}
-
-int PatchBase::get_cred_securebits_padding() {
-	if (get_cred_atomic_usage_len() == 8) return 4;
-	return 0;
-}
-
-uint64_t PatchBase::get_cap_ability_max() {
-	uint64_t cap = 0x3FFFFFFFFF;
-	if (m_kernel_ver_parser.is_kernel_version_less("5.8.0")) cap = 0x3FFFFFFFFF;
-	else if (m_kernel_ver_parser.is_kernel_version_less("5.9.0")) cap = 0xFFFFFFFFFF;
-	else cap = 0x1FFFFFFFFFF;
-	return cap;
-}
-
-int PatchBase::get_cap_cnt() {
-	int cnt = 0;
-	if (m_kernel_ver_parser.is_kernel_version_less("4.3.0")) cnt = 4;
-	else cnt = 5;
-	return cnt;
 }
 
 size_t PatchBase::patch_jump(size_t patch_addr, size_t jump_addr, std::vector<patch_bytes_data>& vec_out_patch_bytes_data) {

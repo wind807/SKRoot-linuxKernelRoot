@@ -37,6 +37,9 @@
     <Filter Include="capstone">
       <UniqueIdentifier>{6b879883-6b08-4151-81ad-b5c4b1ed2d79}</UniqueIdentifier>
     </Filter>
+    <Filter Include="cJSON">
+      <UniqueIdentifier>{2a076ef9-a862-481f-8a19-51ff27c90451}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="patch_kernel_root.cpp">
@@ -301,6 +304,12 @@
       <Filter>capstone</Filter>
     </ClCompile>
     <ClCompile Include="analyze\kallsyms_lookup_name_6_1_0.cpp">
+      <Filter>analyze</Filter>
+    </ClCompile>
+    <ClCompile Include="3rdparty\cJSON\cJSON.cpp">
+      <Filter>cJSON</Filter>
+    </ClCompile>
+    <ClCompile Include="analyze\init_cred_searcher.cpp">
       <Filter>analyze</Filter>
     </ClCompile>
   </ItemGroup>
@@ -696,6 +705,12 @@
       <Filter>capstone</Filter>
     </ClInclude>
     <ClInclude Include="analyze\kallsyms_lookup_name_6_1_0.h">
+      <Filter>analyze</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cJSON\cJSON.h">
+      <Filter>cJSON</Filter>
+    </ClInclude>
+    <ClInclude Include="analyze\init_cred_searcher.h">
       <Filter>analyze</Filter>
     </ClInclude>
   </ItemGroup>
