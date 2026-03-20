@@ -46,7 +46,7 @@
 
 2.将内核kernel文件拖拽置`patch_kernel_root.exe`即可一键自动化流程补丁内核，同时会自动生成Root密匙。
 
-3.安装并启动`PermissionManager.apk`或者`testRoot`，输入Root密匙值，即可正常使用SKRoot。
+3.安装并启动`skroot_lite.apk`或者`testRoot`，输入Root密匙值，即可正常使用SKRoot。
 
 ## SKRoot(Pro) 使用流程：
 *已全部开发完成，其中 “SKRootPro 模块开发 SDK” 已公开，其余组件将在稳定后逐步公开。*
