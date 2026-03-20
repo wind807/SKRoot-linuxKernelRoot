@@ -114,12 +114,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void initLink() {
         TextView link_tv = findViewById(R.id.link_tv);
         TextView tg_tv = findViewById(R.id.tg_tv);
-        link_tv.setText("https://github.com/abcz316/SKRoot-linuxKernelRoot");
-        tg_tv.setText("https://t.me/skrootabc");
         link_tv.setOnClickListener(v -> { UrlIntentUtils.openUrl(this, link_tv.getText().toString()); });
         tg_tv.setOnClickListener(v -> { UrlIntentUtils.openUrl(this, link_tv.getText().toString()); });
-        link_tv.getPaint().setFlags(link_tv.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
-        tg_tv.getPaint().setFlags(link_tv.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
     }
 
     private void showSkrootStatus() {
@@ -137,7 +133,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.handleMessage(msg);
             }
         };
-        DialogUtils.showInputDlg(this, rootKey,"请输入ROOT权限的KEY", null, inputCallback, null);
+        DialogUtils.showInputDlg(this, rootKey,"请输入Root权限的KEY", null, inputCallback, null);
     }
     private void checkGetAppListPermission() {
         if(GetAppListPermissionHelper.getPermissions(this)) return;
@@ -159,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.handleMessage(msg);
             }
         };
-        DialogUtils.showInputDlg(this, lastInputCmd, "请输入ROOT命令", null, inputCallback, null);
+        DialogUtils.showInputDlg(this, lastInputCmd, "请输入Root命令", null, inputCallback, null);
     }
 
     public void showInputRootExecProcessPathDlg() {
@@ -182,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         };
         DialogUtils.showInputDlg(this, lastInputRootExecPath, "请输入Linux可运行文件的位置", "指导", inputCallback, helperCallback);
-        DialogUtils.showMsgDlg(this,"提示", "本功能是以ROOT身份直接运行程序，可避免产生su、sh等多余驻留后台进程，能最大程度上避免侦测", null);
+        DialogUtils.showMsgDlg(this,"提示", "本功能是以Root身份直接运行程序，可避免产生su、sh等多余驻留后台进程，能最大程度上避免侦测", null);
     }
 
     public void onClickSuEnvInstallBtn() {
@@ -231,7 +227,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         m_loadingDlg.cancel();
 
                         if(autoSuEnvInjectRet.indexOf("auto_su_env_inject done.") != -1) {
-                            DialogUtils.showMsgDlg(MainActivity.this, "提示","已授予ROOT权限至APP [" + app.getShowName(MainActivity.this) + "]",
+                            DialogUtils.showMsgDlg(MainActivity.this, "提示","已授予Root权限至APP [" + app.getShowName(MainActivity.this) + "]",
                                     app.getDrawable(MainActivity.this));
                         }
                     }

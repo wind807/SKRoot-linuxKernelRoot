@@ -24,56 +24,45 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="4dp"
         android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:text="github网站："
-                android:textSize="13sp" />
 
             <TextView
                 android:id="@+id/link_tv"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
+                android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:text=""
+                android:padding="6dp"
+                android:text="🔗 访问 GitHub"
                 android:textColor="#1E88E5"
                 android:textSize="13sp" />
-        </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:text="TG频道："
-                android:textSize="13sp" />
+            <View
+                android:layout_width="1dp"
+                android:layout_height="12dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="8dp"
+                android:background="#D6D6D6" />
 
             <TextView
                 android:id="@+id/tg_tv"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
+                android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:text=""
+                android:padding="6dp"
+                android:text="✈️ TG 频道"
                 android:textColor="#1E88E5"
                 android:textSize="13sp" />
+
         </LinearLayout>
 
     </LinearLayout>
@@ -113,7 +102,7 @@
                     android:id="@+id/test_root_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="1.测试ROOT权限"
+                    android:text="1.测试Root权限"
                     />
 
                 <Button
@@ -121,7 +110,7 @@
                     android:id="@+id/run_root_cmd_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="2.执行ROOT命令"
+                    android:text="2.执行Root命令"
                     />
 
                 <Button
@@ -129,7 +118,7 @@
                     android:id="@+id/root_exec_process_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="3.以ROOT运行程序"
+                    android:text="3.以Root运行程序"
                     />
 
                 <Button
