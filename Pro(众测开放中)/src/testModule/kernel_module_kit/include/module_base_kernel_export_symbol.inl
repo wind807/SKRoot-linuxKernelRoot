@@ -14,18 +14,18 @@ using namespace asmjit::a64::Predicate;
 using CallHelper = Aarch64KernelSymCallHelper;
 using NeedReturnX0 = CallHelper::NeedReturnX0;
 
-inline void get_current(Assembler* a, GpX x) {
+inline void get_current(Assembler* a, GpX out_regs) {
 	struct thread_info {
 		uint64_t flags;		/* low level flags */
 		uint64_t addr_limit;	/* address limit */
 	};
 	Label label_error = a->newLabel();
 	uint32_t sp_el0_id = SysReg::encode(3, 0, 4, 1, 0);
-	a->mrs(x, sp_el0_id);
+	a->mrs(out_regs, sp_el0_id);
 	if (!kernel_module::is_CONFIG_THREAD_INFO_IN_TASK()) {
-		a->cbz(x, label_error);
-		a->and_(x, x, Imm((uint64_t)~(0x4000 - 1)));
-		a->ldr(x, ptr(x, sizeof(thread_info)));
+		a->cbz(out_regs, label_error);
+		a->and_(out_regs, out_regs, Imm((uint64_t)~(0x4000 - 1)));
+		a->ldr(out_regs, ptr(out_regs, sizeof(thread_info)));
 		a->bind(label_error);
 	}
 }
@@ -57,9 +57,7 @@ inline void copy_from_user(Assembler* a, KModErr & out_err, GpX to, GpX __user_f
 inline void copy_from_user(Assembler* a, KModErr & out_err, GpX to, GpX __user_from, uint64_t n) {
 	IdleRegPool pool = IdleRegPool::make(to, __user_from);
 	GpX xN = pool.acquireX();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_mov_x(a, xN, n);
 	CallHelper::callSymbolCandidates(a, out_err,
 		copy_from_user_symbol_names,
@@ -79,15 +77,40 @@ inline void copy_to_user(Assembler* a, KModErr & out_err, GpX __user_to, GpX fro
 inline void copy_to_user(Assembler* a, KModErr & out_err, GpX __user_to, GpX from, uint64_t n) {
 	IdleRegPool pool = IdleRegPool::make(__user_to, from);
 	GpX xN = pool.acquireX();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_mov_x(a, xN, n);
 	CallHelper::callSymbolCandidates(a, out_err,
 		copy_to_user_symbol_names,
 		NeedReturnX0::Yes,
         __user_to, from, xN
     );
+}
+
+
+static const std::vector<std::string> copy_from_kernel_nofault_symbol_names = {
+	"copy_from_kernel_nofault",	// Linux 5.8.0
+	"probe_kernel_read",
+	"__probe_kernel_read",
+};
+
+inline void copy_from_kernel_nofault(Assembler* a, KModErr& out_err, GpX dst, GpX src, GpX size) {
+	CallHelper::callSymbolCandidates(a, out_err,
+		copy_from_kernel_nofault_symbol_names,
+		NeedReturnX0::Yes,
+		dst, src, size
+	);
+}
+
+inline void copy_from_kernel_nofault(Assembler* a, KModErr& out_err, GpX dst, GpX src, uint64_t size) {
+	IdleRegPool pool = IdleRegPool::make(dst, src);
+	GpX xN = pool.acquireX();
+	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
+	aarch64_asm_mov_x(a, xN, size);
+	CallHelper::callSymbolCandidates(a, out_err,
+		copy_from_kernel_nofault_symbol_names,
+		NeedReturnX0::Yes,
+		dst, src, xN
+	);
 }
 
 inline void printk(Assembler* a, KModErr & out_err, const char* fmt, const Arm64Arg* regs, int regs_count) {
@@ -98,11 +121,15 @@ inline void printk(Assembler* a, KModErr & out_err, const char* fmt, const Arm64
 	aarch64_asm_set_x_cstr_ptr(a, xFmt, fmt);
 	std::vector<Arm64Arg> new_regs = __regs_vec;
 	new_regs.insert(new_regs.begin(), to_arg(xFmt));
-	if(kernel_module::is_kernel_version_less("5.15.0")) {
-		out_err = CallHelper::callNameAuto(a, "printk", NeedReturnX0::No, new_regs);
-	} else {
-		out_err = CallHelper::callNameAuto(a, "_printk", NeedReturnX0::No, new_regs);
-	}
+	CallHelper::callSymbolCandidates(a, out_err,
+        (std::vector<std::string>{ "printk", "_printk"/*Linux kernel 5.15.0*/ }),
+		NeedReturnX0::No,
+        new_regs
+    );
+}
+
+inline void kallsyms_lookup_name(Assembler* a, KModErr & out_err, GpX name) {
+    out_err = CallHelper::callNameAuto(a, "kallsyms_lookup_name", NeedReturnX0::Yes, name);
 }
 
 inline void kallsyms_on_each_symbol(Assembler* a, KModErr & out_err, SymbolCb fn, GpX data) {
@@ -126,9 +153,7 @@ inline void kallsyms_on_each_symbol(Assembler* a, KModErr & out_err, SymbolCb fn
 	}
 	IdleRegPool pool = IdleRegPool::make(data);
 	GpX xCallback = pool.acquireX();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_set_x_data_ptr(a, xCallback, callback_code);
 	std::vector<Arm64Arg> new_regs;
 	new_regs.push_back(to_arg(xCallback));
@@ -152,9 +177,7 @@ inline void find_vma(Assembler* a, KModErr& out_err, GpX mm, GpX addr) {
 inline void find_vma(Assembler* a, KModErr& out_err, GpX mm, uint64_t addr) {
 	IdleRegPool pool = IdleRegPool::make(mm);
 	GpX xAddr = pool.acquireX();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_mov_x(a, xAddr, addr);
 	find_vma(a, out_err, mm, xAddr);
 }
@@ -163,12 +186,22 @@ inline void find_vma(Assembler* a, KModErr& out_err, uint64_t mm, uint64_t addr)
 	IdleRegPool pool = IdleRegPool::make();
 	GpX xMm = pool.acquireX();
 	GpX xAddr = pool.acquireX();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_mov_x(a, xMm, mm);
 	aarch64_asm_mov_x(a, xAddr, addr);
 	find_vma(a, out_err, xMm, xAddr);
+}
+
+inline void find_vm_area(Assembler* a, KModErr& out_err, GpX addr) {
+	out_err = CallHelper::callNameAuto(a, "find_vm_area", NeedReturnX0::Yes, addr);
+}
+
+inline void find_vm_area(Assembler* a, KModErr& out_err, uint64_t addr) {
+	IdleRegPool pool = IdleRegPool::make();
+	GpX xAddr = pool.acquireX();
+	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
+	aarch64_asm_mov_x(a, xAddr, addr);
+	find_vm_area(a, out_err, xAddr);
 }
 
 inline void set_memory_ro(Assembler* a, KModErr & out_err, GpX addr, GpW numpages) {
@@ -215,9 +248,7 @@ inline void kmalloc(Assembler* a, KModErr & out_err, GpX size, GpW flags) {
 inline void kmalloc(Assembler* a, KModErr & out_err, GpX size, KmallocFlags flags) {
 	IdleRegPool pool = IdleRegPool::make(size);
 	GpW wGFP_FLAG = pool.acquireW();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_mov_w(a, wGFP_FLAG, (uint32_t)flags);
 	std::vector<Arm64Arg> new_regs;
 	new_regs.push_back(to_arg(size));
@@ -436,9 +467,7 @@ inline void access_process_vm(Assembler* a, KModErr& out_err, GpX tsk, GpX addr,
 inline void access_process_vm(Assembler* a, KModErr& out_err, GpX tsk, GpX addr, GpX buf, uint32_t len, GpW write) {
 	IdleRegPool pool = IdleRegPool::make(tsk, addr, buf, write);
 	GpW wLen = pool.acquireW();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_mov_w(a, wLen, len);
 	access_process_vm(a, out_err, tsk, addr, buf, wLen, write);
 }
@@ -487,7 +516,6 @@ inline void path_put(Assembler* a, KModErr& out_err, uint64_t ptr_path) {
 	IdleRegPool pool = IdleRegPool::make();
 	GpX xPtrPath = pool.acquireX();
 	RegProtectGuard g1(a, pool.getUsed());
-
 	aarch64_asm_mov_x(a, xPtrPath, ptr_path);
 	path_put(a, out_err, xPtrPath);
 }
@@ -552,9 +580,7 @@ inline void pid_task(Assembler* a, KModErr& out_err, GpX pid, GpW type) {
 inline void pid_task(Assembler* a, KModErr& out_err, GpX pid, PidType type) {
 	IdleRegPool pool = IdleRegPool::make(pid);
 	GpW wType = pool.acquireW();
-
 	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
-
 	aarch64_asm_mov_w(a, wType, (uint32_t)type);
 	pid_task(a, out_err, pid, wType);
 }
@@ -634,6 +660,10 @@ inline void local_irq_restore(Assembler* a, GpX flags) {
 
 inline void invalidate_inode_pages2(Assembler* a, KModErr& out_err, GpX mapping) {
 	out_err = CallHelper::callNameAuto(a, "invalidate_inode_pages2", NeedReturnX0::Yes, mapping);
+}
+
+inline void dump_stack(Assembler* a, KModErr& out_err) {
+	out_err = CallHelper::callNameAuto(a, "dump_stack", NeedReturnX0::No);
 }
 
 } // namespace export_symbol

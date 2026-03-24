@@ -32,7 +32,7 @@ void arm64_before_hook_end(asmjit::a64::Assembler* a, bool continue_original);
  *   hook_handler_code	 Hook 处理函数的机器码（shellcode）。
  *                       （注意：Hook处理函数开头必须调用 arm64_before_hook_start，结尾必须调用 arm64_before_hook_end，否则不合法。）
  * 返回: OK 表示成功，其他值为错误码。
- * 工作原理：仅将 kaddr 位置的 1 条指令（4 字节）替换为单条 B 跳转指令，无任何性能损耗。
+ * 工作原理：仅将 kaddr 位置的 1 条指令（4 字节）替换为单条 B 跳转指令，0性能损耗。
  * 
  * Hook处理函数示例：
  *   arm64_before_hook_start(a);
@@ -61,7 +61,7 @@ void arm64_after_hook_end(asmjit::a64::Assembler* a);
  *   hook_handler_code   Hook 处理函数的机器码（shellcode）。
  *                       （注意：Hook处理函数开头必须调用 arm64_after_hook_start，结尾必须调用 arm64_after_hook_end，否则不合法。）
  * 返回: OK 表示成功，其他值为错误码
- * 工作原理：仅将 kaddr 位置的 1 条指令（4 字节）替换为单条 B 跳转指令，无任何性能损耗。
+ * 工作原理：仅将 kaddr 位置的 1 条指令（4 字节）替换为单条 B 跳转指令，0性能损耗。
  *  
  * Hook处理函数示例：
  *   arm64_after_hook_start(a);

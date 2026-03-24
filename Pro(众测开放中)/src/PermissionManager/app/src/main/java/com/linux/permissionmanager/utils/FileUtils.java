@@ -9,12 +9,15 @@ import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -42,6 +45,25 @@ public class FileUtils {
         return path;
     }
 
+    public static boolean copyFile(File src, File dst) {
+        if (src == null || !src.exists() || !src.isFile()) return false;
+        File parent = dst.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) return false;
+
+        try (InputStream in = new FileInputStream(src);
+             FileOutputStream out = new FileOutputStream(dst)) {
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+            out.flush();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     public static void deleteFile(File destFile) {
         try {
             if (destFile != null && destFile.exists()) destFile.delete();
@@ -66,5 +88,33 @@ public class FileUtils {
             // 小于KB
             return size + " B";
         }
+    }
+
+    public static String readFile(File file) throws Exception {
+        try (FileInputStream fis = new FileInputStream(file);
+             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            byte[] buf = new byte[4096];
+            int len;
+            while ((len = fis.read(buf)) != -1) {
+                bos.write(buf, 0, len);
+            }
+            return bos.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
+    public static String readTextFile(String path) {
+        java.io.File file = new java.io.File(path);
+        if (!file.exists() || !file.isFile()) return null;
+        StringBuilder sb = new StringBuilder();
+        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file)))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return sb.toString();
     }
 }

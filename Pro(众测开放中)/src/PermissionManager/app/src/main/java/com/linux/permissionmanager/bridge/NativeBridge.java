@@ -3,7 +3,7 @@ package com.linux.permissionmanager.bridge;
 public final class NativeBridge {
     static { System.loadLibrary("permissionmanager"); }
 
-    public static native String installSkrootEnv(String rootKey);
+    public static native String installSkrootEnv(String rootKey, boolean isHotload);
     public static native String uninstallSkrootEnv(String rootKey);
     public static native String getSkrootEnvState(String rootKey);
     public static native String getInstalledSkrootEnvVersion(String rootKey);
@@ -11,7 +11,6 @@ public final class NativeBridge {
     
     public static native String testRoot(String rootKey);
     public static native String runRootCmd(String rootKey, String cmd);
-    public static native String rootExecProcessCmd(String rootKey, String cmd);
 
     public static native String addSuAuth(String rootKey, String appPackageName);
     public static native String removeSuAuth(String rootKey, String appPackageName);

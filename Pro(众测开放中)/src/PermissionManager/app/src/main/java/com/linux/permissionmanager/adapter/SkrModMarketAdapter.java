@@ -53,7 +53,6 @@ public class SkrModMarketAdapter extends RecyclerView.Adapter<SkrModMarketAdapte
     public void onBindViewHolder(ViewHolder holder, int position) {
         SkrModMarketItem skrmod = skrmods.get(position);
         holder.tvName.setText(skrmod.getChnName());
-
         setTextOrGone(holder.tvDesc, skrmod.getDesc());
         holder.tvVer.setText(skrmod.getVer());
         holder.tvAuthor.setText(skrmod.getAuthor());
@@ -75,7 +74,6 @@ public class SkrModMarketAdapter extends RecyclerView.Adapter<SkrModMarketAdapte
         public TextView tvAuthor;
         public TextView tvUpdateDate;
         public Button btnActions;
-
         public ViewHolder(View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.name_tv);

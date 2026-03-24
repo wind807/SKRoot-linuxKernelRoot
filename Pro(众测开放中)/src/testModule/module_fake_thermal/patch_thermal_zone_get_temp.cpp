@@ -78,7 +78,7 @@ KModErr PatchThermalZoneGetTemp::patch_thermal_zone_get_temp() {
 
 	// 35000 + ((real - 35000) * 35 / 100)
 	aarch64_asm_mov_w(a, w11, 35000);
-	a->add(w12, w12, w11); 
+	a->add(w12, w12, w11);
 	
 	// kernel_module::export_symbol::printk(a, err, "[!!!] thermal_zone_get_temp fake val: %d\n", w12);
 

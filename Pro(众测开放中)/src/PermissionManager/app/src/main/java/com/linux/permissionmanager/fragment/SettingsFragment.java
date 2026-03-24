@@ -2,14 +2,8 @@ package com.linux.permissionmanager.fragment;
 
 import android.app.Activity;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.Paint;
-import android.net.Uri;
 import android.os.Bundle;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.UnderlineSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -41,6 +35,7 @@ public class SettingsFragment extends Fragment {
     private Button mBtnShowSkrootLog;
     private TextView mTvAboutVer;
     private TextView mTvLink;
+    private TextView mTvTg;
 
     // Update component
     private LinearLayout mTvUpdateBlock;
@@ -72,6 +67,7 @@ public class SettingsFragment extends Fragment {
         mBtnShowSkrootLog = view.findViewById(R.id.show_skroot_log_btn);
         mTvAboutVer = view.findViewById(R.id.about_ver_tv);
         mTvLink = view.findViewById(R.id.link_tv);
+        mTvTg = view.findViewById(R.id.tg_tv);
 
         // Update component
         mTvUpdateBlock = view.findViewById(R.id.core_update_block);
@@ -82,6 +78,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void initSettingsControl() {
+        mCkboxEnableBootFailProtect.setOnCheckedChangeListener(null);
         mCkboxEnableBootFailProtect.setChecked(NativeBridge.isBootFailProtectEnabled(mRootKey));
         mCkboxEnableBootFailProtect.setOnCheckedChangeListener(
                 (v, isChecked) -> {
@@ -92,6 +89,7 @@ public class SettingsFragment extends Fragment {
         mBtnTestSkrootBasics.setOnClickListener((v) -> showSelectTestSkrootBasicsDlg());
         mBtnTestSkrootDefaultModule.setOnClickListener((v) -> showSelectTestDefaultModuleDlg());
 
+        mCkboxEnableSkrootLog.setOnCheckedChangeListener(null);
         mCkboxEnableSkrootLog.setChecked(NativeBridge.isSkrootLogEnabled(mRootKey));
         mCkboxEnableSkrootLog.setOnCheckedChangeListener(
                 (v, isChecked) -> {
@@ -121,6 +119,7 @@ public class SettingsFragment extends Fragment {
                 else if(which == 3) item = "ReadTrampoline";
                 else if(which == 4) item = "WriteTrampoline";
                 String log = NativeBridge.testSkrootBasics(mRootKey, item);
+                if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\\n请先卸载 SKRoot 环境，再重试。";
                 DialogUtils.showLogDialog(mActivity, log);
             }
         });
@@ -133,7 +132,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void showSelectTestDefaultModuleDlg() {
-        final String[] items = {"1.ROOT 权限模块 (打印)", "2.ROOT 权限模块 (执行)", "3.SU 重定向模块 (打印)", "4.SU 重定向模块 (执行)"};
+        final String[] items = {"1.Root 权限模块 (打印)", "2.Root 权限模块 (执行)", "3.su 重定向模块 (打印)", "4.su 重定向模块 (执行)"};
         AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
         builder.setTitle("选择一个选项");
         builder.setSingleChoiceItems(items, -1, new DialogInterface.OnClickListener() {
@@ -146,6 +145,7 @@ public class SettingsFragment extends Fragment {
                 else if(which == 2) defName = "SuRedirectPrint";
                 else if(which == 3) defName = "SuRedirectExec";
                 String log = NativeBridge.testSkrootDefaultModule(mRootKey, defName);
+                if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\\n请先卸载 SKRoot 环境，再重试。";
                 DialogUtils.showLogDialog(mActivity, log);
             }
         });
@@ -170,16 +170,16 @@ public class SettingsFragment extends Fragment {
     }
 
     private void initLink() {
-        mTvLink.setText("https://github.com/abcz316/SKRoot-linuxKernelRoot");
-        mTvLink.setOnClickListener(v -> {
-            UrlIntentUtils.openUrl(mActivity, mTvLink.getText().toString());
-        });
+        mTvLink.setText("github.com/abcz316/SKRoot-linuxKernelRoot");
+        mTvTg.setText("t.me/skrootabc");
+        mTvLink.setOnClickListener(v -> { UrlIntentUtils.openUrl(mActivity, mTvLink.getText().toString()); });
+        mTvTg.setOnClickListener(v -> { UrlIntentUtils.openUrl(mActivity, mTvTg.getText().toString()); });
         makeUnderline(mTvLink);
+        makeUnderline(mTvTg);
     }
 
     private void onDownloadChangeLogApp(AppUpdateInfo updateInfo) {
-        mUpdateManager.requestAppChangelog(
-                updateInfo,
+        mUpdateManager.requestAppChangelog(updateInfo,
                 (content) -> DialogUtils.showLogDialog(mActivity, content),
                 (e) -> DialogUtils.showMsgDlg(mActivity, "提示", "App 更新日志下载失败：" + e.getMessage(),null)
         );

@@ -174,6 +174,7 @@ KModErr Test_install_kernel_function_after_hook() {
 int main(int argc, char *argv[]) {
  	//TODO: 在此修改你的Root key值。
 	fake_skroot_module_main("vzXtDKDAltAGxHtMGRZZfVouy90dgNqFsLM6UGeqb6OgH0VX");
+
  	// 单元测试：内核模块基础能力
 	int idx = 1;
  	TEST(idx++, Test_execute_kernel_asm_func);				// 执行shellcode并获取返回值
@@ -212,9 +213,12 @@ int main(int argc, char *argv[]) {
  	TEST(idx++, Test_get_task_struct_comm_offset);			// 获取 task_struct 结构体中 comm 字段的偏移量
  	TEST(idx++, Test_get_task_struct_real_cred_offset);		// 获取 task_struct 结构体中 real_cred 字段的偏移量
  	TEST(idx++, Test_get_task_struct_mm_offset);			// 获取 task_struct 结构体中 mm 字段的偏移量
+ 	TEST(idx++, Test_get_task_struct_stack_offset);			// 获取 task_struct 结构体中 stack 字段的偏移量
+ 	TEST(idx++, Test_get_task_struct_stack_size);			// 获取 task_struct 结构体中 stack 字段关联的内核栈大小（THREAD_SIZE）
  	TEST(idx++, Test_get_task_struct_files_offset);			// 获取 task_struct 结构体中 files 字段的偏移量
  	TEST(idx++, Test_get_task_struct_tasks_offset);			// 获取 task_struct 结构体中 tasks 字段的偏移量
  	TEST(idx++, Test_get_cred_uid_offset);					// 获取 cred 结构体中 uid 字段的偏移量
+ 	TEST(idx++, Test_get_cred_cap_inheritable_offset);		// 获取 cred 结构体中 cap_inheritable 字段的偏移量
  	TEST(idx++, Test_get_mm_struct_arg_offset);				// 获取 mm_struct 结构体中 arg_start\arg_end 字段的偏移量
  	TEST(idx++, Test_get_mm_struct_env_offset);				// 获取 mm_struct 结构体中 env_start\env_end 字段的偏移量
  	TEST(idx++, Test_get_mm_struct_pgd_offset);				// 获取 mm_struct 结构体中 pgd 字段的偏移量
@@ -300,6 +304,5 @@ int main(int argc, char *argv[]) {
  	TEST(idx++, Test_kstartswith2);
  	TEST(idx++, Test_kendswith1);
  	TEST(idx++, Test_kendswith2);
-
 	return 0;
 }

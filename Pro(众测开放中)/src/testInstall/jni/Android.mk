@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := testInstall
-LOCAL_SRC_FILES := ../command.cpp ../main.cpp ../exec_process.cpp ../test.cpp 
+LOCAL_SRC_FILES := ../main.cpp
 
 KERNEL_MODULE_KIT := $(LOCAL_PATH)/../../testModule/kernel_module_kit
 

@@ -1,7 +1,9 @@
 package com.linux.permissionmanager.fragment;
 
+import static com.linux.permissionmanager.AppSettings.HOTLOAD_SHELL_PATH;
+import static com.linux.permissionmanager.AppSettings.KEY_IS_HOTLOAD_MODE;
+
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -95,22 +97,28 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         }
     }
 
+    private boolean isSkrootChannelOK(String rootKey) { return NativeBridge.testSkrootBasics(rootKey, "Channel").contains("OK"); }
+
     private void showSkrootStatus() {
         String curState = NativeBridge.getSkrootEnvState(mRootKey);
         String installedVer = NativeBridge.getInstalledSkrootEnvVersion(mRootKey);
         String sdkVer = NativeBridge.getSdkVersion();
-
+        boolean isHotload = AppSettings.getBoolean(KEY_IS_HOTLOAD_MODE, false);
+        boolean isFault = false;
         if(curState.indexOf("NotInstalled") != -1) {
-            appendConsoleMsg("SKRoot环境未安装！");
+            appendConsoleMsg("SKRoot环境未安装！"); isFault = true;
         } else if(curState.indexOf("Fault") != -1) {
-            appendConsoleMsg("SKRoot环境出现故障，核心版本：" + installedVer);
+            appendConsoleMsg("SKRoot环境出现故障，核心版本：" + installedVer); isFault = true;
         } else if(curState.indexOf("Running") != -1) {
             if (sdkVer.equals(installedVer)) {  
                 appendConsoleMsg("SKRoot环境运行中，核心版本：" + installedVer);
             } else {
                 appendConsoleMsg("SKRoot环境运行中，核心版本：" + installedVer + "，版本太低，请升级！");
-                appendConsoleMsg("升级方法：重新点击“安装SKRoot环境”按钮。");
+                appendConsoleMsg("升级方式：请重新安装 SKRoot 环境。");
             }
+        }
+        if(isHotload && isFault) {
+            appendConsoleMsg(isSkrootChannelOK(mRootKey) ? "当前为热启动模式，请立即安装SKRoot环境。" : "当前为热启动模式，正在等待热启动补丁响应，请稍候…");
         }
     }
 
@@ -129,22 +137,18 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
     }
 
     private void onClickInstallSkrootEnvBtn() {
-        appendConsoleMsg(NativeBridge.installSkrootEnv(mRootKey));
+        boolean isHotload = AppSettings.getBoolean(KEY_IS_HOTLOAD_MODE, false);
+        String err = NativeBridge.installSkrootEnv(mRootKey, isHotload);
+        appendConsoleMsg(err);
+        if(isHotload && err.indexOf("OK") != -1) NativeBridge.runRootCmd(mRootKey, "rm -f " + HOTLOAD_SHELL_PATH);
     }
 
     private void onClickUninstallSkrootEnvBtn() {
-        DialogUtils.showCustomDialog(
-                mActivity,
-                "确认",
-                "确定要卸载SKRoot环境吗？这会同时清空 SU 授权列表和删除已安装的模块",
-                null,
+        DialogUtils.showCustomDialog(mActivity,"确认","确定要卸载SKRoot环境吗？这会同时清空 SU 授权列表和删除已安装的模块",null,
                 "确定", (dialog, which) -> {
                     dialog.dismiss();
                     appendConsoleMsg(NativeBridge.uninstallSkrootEnv(mRootKey));
-                },
-                "取消", (dialog, which) -> {
-                    dialog.dismiss();
-                }
+                },"取消", (dialog, which) -> dialog.dismiss()
         );
     }
 

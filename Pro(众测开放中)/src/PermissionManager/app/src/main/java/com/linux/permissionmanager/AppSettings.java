@@ -7,12 +7,15 @@ import java.util.Collections;
 import java.util.Set;
 
 public class AppSettings {
+    public static final String KEY_IS_HOTLOAD_MODE = "is_hotload_mode";
+    public static final String HOTLOAD_SHELL_PATH = "/sdcard/1.h";
+    public static final String SHELL_SOCKET_NAME = "myshell_socket";
+
     private static SharedPreferences preferences;
 
     public static void init(Context context) {
-        if (preferences == null) {
-            preferences = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
-        }
+        if (preferences != null) return;
+        preferences = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
     }
 
     public static void setBoolean(String key, boolean value) {

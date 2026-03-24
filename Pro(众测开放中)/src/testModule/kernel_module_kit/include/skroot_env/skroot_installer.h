@@ -4,13 +4,21 @@
 #include <unistd.h>
 
 namespace skroot_env {
+
+// 定义 SKRoot 环境安装策略
+enum class InstallMode : uint32_t {
+    Boot    = 0, // 刷Boot模式 (固化到内核，自动重启)
+    HotLoad = 1  // 热加载模式 (LKM内核注入，立刻生效不重启)
+};
+
 /***************************************************************************
  * 安装 SKRoot 环境
  * 说明: 首次使用前必须调用此函数，用于创建 SKRoot 所需的环境文件。
  * 参数: root_key   ROOT权限密钥文本
+ *      mode        部署模式 (默认为刷 Boot 模式)
  * 返回: OK 表示成功；其它值为错误码
  ***************************************************************************/
-KModErr install_skroot_environment(const char* root_key);
+KModErr install_skroot_environment(const char* root_key, InstallMode mode = InstallMode::Boot);
 
 /***************************************************************************
  * 卸载 SKRoot 环境

@@ -35,8 +35,8 @@
 namespace kernel_module {
 namespace export_symbol {
 using namespace asmjit::a64;
-// 原型：struct task_struct *get_current(void);，获取current指针并赋值到寄存器x，需判空，因为kthread无法获取。无返回值。
-void get_current(Assembler* a, GpX x);
+// 原型：struct task_struct *current(void); 获取current指针并赋值到寄存器x，需判空，因为kthread无法获取。无返回值。
+void get_current(Assembler* a, GpX out_regs);
 
 // 原型：unsigned long copy_from_user(void *to, const void __user *from, unsigned long n); 返回值为 X0 寄存器
 void copy_from_user(Assembler* a, KModErr& out_err, GpX to, GpX __user_from, GpX n);
@@ -46,6 +46,10 @@ void copy_from_user(Assembler* a, KModErr& out_err, GpX to, GpX __user_from, uin
 void copy_to_user(Assembler* a, KModErr& out_err, GpX __user_to, GpX from, GpX n);
 void copy_to_user(Assembler* a, KModErr& out_err, GpX __user_to, GpX from, uint64_t n);
 
+// 原型：long copy_from_kernel_nofault(void *dst, const void *src, size_t size); 返回值为 X0 寄存器
+void copy_from_kernel_nofault(Assembler* a, KModErr& out_err, GpX dst, GpX src, GpX size);
+void copy_from_kernel_nofault(Assembler* a, KModErr& out_err, GpX dst, GpX src, uint64_t size);
+
 // 原型：void printk(const char *fmt, ...); 无返回值
 template <typename... Regs>
 void printk(Assembler* a, KModErr& out_err, const char *fmt, Regs... regs) {
@@ -53,6 +57,9 @@ void printk(Assembler* a, KModErr& out_err, const char *fmt, Regs... regs) {
     void printk(Assembler* a, KModErr& out_err, const char *fmt, const Arm64Arg* regs, int regs_count);
     printk(a, out_err, fmt, orig.data(), static_cast<int>(orig.size()));
 }
+
+// 原型: unsigned long kallsyms_lookup_name(const char *name); 返回值为 X0 寄存器
+void kallsyms_lookup_name(Assembler* a, KModErr& out_err, GpX name);
 
 // 原型：int fn(void *data, const char *name, struct module *mod, unsigned long addr)，设置末尾 X0 返回值非0代表终止遍历。
 typedef void (*SymbolCb)(
@@ -75,6 +82,10 @@ void mmput(Assembler* a, KModErr& out_err, GpX mm);
 void find_vma(Assembler* a, KModErr& out_err, GpX mm, GpX addr);
 void find_vma(Assembler* a, KModErr& out_err, GpX mm, uint64_t addr);
 void find_vma(Assembler* a, KModErr& out_err, uint64_t mm, uint64_t addr);
+
+// 原型：struct vm_struct *find_vm_area(const void *addr); 返回值为 X0 寄存器
+void find_vm_area(Assembler* a, KModErr& out_err, GpX addr);
+void find_vm_area(Assembler* a, KModErr& out_err, uint64_t addr);
 
 // 原型: int set_memory_ro(unsigned long addr, int numpages); 返回值为 W0 寄存器
 void set_memory_ro(Assembler* a, KModErr& out_err, GpX addr, GpW numpages);
@@ -276,6 +287,9 @@ void local_irq_restore(Assembler* a, GpX flags);
 
 // 原型：int invalidate_inode_pages2(struct address_space *mapping); 返回值为 W0 寄存器
 void invalidate_inode_pages2(Assembler* a, KModErr& out_err, GpX mapping);
+
+// 原型：void dump_stack(void); 无返回值
+void dump_stack(Assembler* a, KModErr& out_err);
 
 } // namespace export_symbol
 } // namespace kernel_module

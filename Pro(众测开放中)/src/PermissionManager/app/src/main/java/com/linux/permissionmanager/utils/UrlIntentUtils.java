@@ -11,7 +11,6 @@ import android.widget.Toast;
 public final class UrlIntentUtils {
     private UrlIntentUtils() {}
 
-    /** 在外部浏览器打开链接；支持传 "example.com" 自动补全 https:// */
     public static boolean openUrl(Context context, String url) {
         if (context == null) return false;
         if (TextUtils.isEmpty(url)) {
@@ -24,7 +23,6 @@ public final class UrlIntentUtils {
         if (!u.startsWith("http://") && !u.startsWith("https://")) {
             u = "https://" + u;
         }
-
         Uri uri = Uri.parse(u);
         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
 

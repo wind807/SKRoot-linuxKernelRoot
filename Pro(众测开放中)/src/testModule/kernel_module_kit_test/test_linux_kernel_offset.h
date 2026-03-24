@@ -45,6 +45,20 @@ KModErr Test_get_task_struct_mm_offset() {
     return KModErr::OK;
 }
 
+KModErr Test_get_task_struct_stack_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_task_struct_stack_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_task_struct_stack_size() {
+    uint32_t size = 0;
+    RETURN_IF_ERROR(kernel_module::get_task_struct_stack_size(size));
+    printf("Output size: 0x%x\n", size);
+    return KModErr::OK;
+}
+
 KModErr Test_get_task_struct_files_offset() {
     uint32_t offset = 0;
     RETURN_IF_ERROR(kernel_module::get_task_struct_files_offset(offset));
@@ -62,6 +76,13 @@ KModErr Test_get_task_struct_tasks_offset() {
 KModErr Test_get_cred_uid_offset() {
     uint32_t offset = 0;
     RETURN_IF_ERROR(kernel_module::get_cred_uid_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_cred_cap_inheritable_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_cred_cap_inheritable_offset(offset));
     printf("Output offset: 0x%x\n", offset);
     return KModErr::OK;
 }

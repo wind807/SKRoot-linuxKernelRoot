@@ -9,7 +9,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
-
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -106,68 +105,47 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="20dp"
             card_view:cardElevation="6dp"
             card_view:cardCornerRadius="8dp"
             card_view:cardBackgroundColor="@android:color/white">
 
             <LinearLayout
-                android:padding="10dp"
+                android:padding="12dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
                 <TextView
-                    android:layout_marginTop="0dp"
-                    android:layout_marginBottom="10dp"
+                    android:layout_marginBottom="8dp"
                     android:textSize="16sp"
-                    android:layout_gravity="center_vertical"
+                    android:textColor="@color/black"
+                    android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="安全提示：" />
+                    android:text="说明与关于：" />
 
                 <TextView
-                    android:layout_marginTop="0dp"
                     android:layout_marginBottom="10dp"
                     android:textSize="13sp"
-                    android:layout_gravity="center_vertical"
+                    android:textColor="#666666"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="为避免被侦测，可使用寄生模式，或卸载管理器App，功能依然生效。" />
+                    android:text="💡 提示：为防止管理器App被侦测，建议使用寄生模式，或卸载管理器App，所有功能依然生效。" />
 
-            </LinearLayout>
-
-        </androidx.cardview.widget.CardView>
-
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            card_view:cardElevation="6dp"
-            card_view:cardCornerRadius="8dp"
-            card_view:cardBackgroundColor="@android:color/white">
-
-            <LinearLayout
-                android:padding="10dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_marginTop="0dp"
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
                     android:layout_marginBottom="10dp"
-                    android:textSize="16sp"
-                    android:layout_gravity="center_vertical"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="关于：" />
+                    android:background="#EEEEEE" />
 
                 <TextView
                     android:id="@+id/about_ver_tv"
-                    android:layout_marginTop="0dp"
                     android:layout_marginBottom="10dp"
                     android:textSize="13sp"
-                    android:layout_gravity="center_vertical"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="内置核心版本：" />
@@ -230,31 +208,49 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginBottom="10dp"
-                    android:orientation="vertical">
-                    <TextView
-                        android:textSize="13sp"
-                        android:layout_gravity="center_vertical"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="官方网站：" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="4dp"> <TextView
+                    android:textSize="13sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="官方网站：" />
 
                     <TextView
                         android:id="@+id/link_tv"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
                         android:textSize="13sp"
                         android:clickable="true"
                         android:focusable="true"
                         android:textColor="#1E88E5"
                         android:foreground="?attr/selectableItemBackgroundBorderless"
                         android:text="" />
-
                 </LinearLayout>
-            </LinearLayout>
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:textSize="13sp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TG频道：" />
+
+                    <TextView
+                        android:id="@+id/tg_tv"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:textColor="#1E88E5"
+                        android:foreground="?attr/selectableItemBackgroundBorderless"
+                        android:text="" />
+                </LinearLayout>
+
+            </LinearLayout>
         </androidx.cardview.widget.CardView>
 
 </LinearLayout>

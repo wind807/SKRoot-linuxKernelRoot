@@ -5,7 +5,10 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Message;
 import android.view.Gravity;
@@ -14,7 +17,9 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -165,11 +170,7 @@ public class DialogUtils {
         buttonBar.setOrientation(LinearLayout.HORIZONTAL);
         buttonBar.setGravity(Gravity.END);
 
-        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                1f
-        );
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         btnLp.setMargins(10, 30, 10, 0); // 按钮之间稍微留点间距
 
         // 【复制】按钮
@@ -206,8 +207,82 @@ public class DialogUtils {
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             window.setGravity(Gravity.CENTER);
         }
-
         dialog.show();
     }
 
+    public static Dialog showLoadingDialog(Context context, String message) {
+        Dialog dialog = new Dialog(context);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
+
+        // 最外层容器：透明背景下居中
+        FrameLayout outer = new FrameLayout(context);
+        outer.setPadding(dp(context, 24), dp(context, 24), dp(context, 24), dp(context, 24));
+
+        // 白色圆角卡片
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(dp(context, 28), dp(context, 24), dp(context, 28), dp(context, 24));
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.WHITE);
+        bg.setCornerRadius(dp(context, 16));
+        card.setBackground(bg);
+
+        FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(
+                dp(context, 260),
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        cardLp.gravity = Gravity.CENTER;
+        card.setLayoutParams(cardLp);
+
+        ProgressBar progressBar = new ProgressBar(context);
+        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(
+                dp(context, 36),
+                dp(context, 36)
+        );
+        progressLp.bottomMargin = dp(context, 16);
+        progressBar.setLayoutParams(progressLp);
+
+        TextView textView = new TextView(context);
+        textView.setText(message);
+        textView.setTextSize(15);
+        textView.setTextColor(Color.parseColor("#222222"));
+        textView.setGravity(Gravity.CENTER);
+        textView.setLineSpacing(0f, 1.2f);
+
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        textView.setLayoutParams(textLp);
+
+        card.addView(progressBar);
+        card.addView(textView);
+        outer.addView(card);
+
+        dialog.setContentView(outer);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.CENTER);
+        }
+
+        dialog.show();
+        return dialog;
+    }
+
+    private static int dp(Context context, int dp) {
+        return (int) (dp * context.getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    public static void dismissDialog(Dialog dialog) {
+        if (dialog != null && dialog.isShowing()) {
+            dialog.dismiss();
+        }
+    }
 }

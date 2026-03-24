@@ -23,9 +23,6 @@ import com.linux.permissionmanager.utils.DialogUtils;
 import com.linux.permissionmanager.utils.GetSdcardPermissionsHelper;
 
 public class SkrModFragment extends Fragment {
-    private Activity mActivity;
-    private String mRootKey = "";
-
     private TabLayout mTabLayout;
     private View mInstalled;
     private View mMarket;
@@ -34,8 +31,6 @@ public class SkrModFragment extends Fragment {
     private SkrModMarketPage mModMarketPage;
 
     public SkrModFragment(Activity activity, String rootKey) {
-        mActivity = activity;
-        mRootKey = rootKey;
         mModInstalledPage = new SkrModInstalledPage(activity, rootKey);
         mModMarketPage = new SkrModMarketPage(activity, rootKey);
     }
@@ -62,13 +57,11 @@ public class SkrModFragment extends Fragment {
     private void initTabLayout() {
         mTabLayout.addTab(mTabLayout.newTab().setText("已安装"), true);
         mTabLayout.addTab(mTabLayout.newTab().setText("模块市场"));
-
         mTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override public void onTabSelected(TabLayout.Tab t) {
                 boolean showInstalled = t.getPosition() == 0;
                 mInstalled.setVisibility(showInstalled ? View.VISIBLE : View.GONE);
                 mMarket.setVisibility(showInstalled ? View.GONE : View.VISIBLE);
-
                 if(showInstalled) mModInstalledPage.refreshPage();
                 else mModMarketPage.refreshPage();
             }

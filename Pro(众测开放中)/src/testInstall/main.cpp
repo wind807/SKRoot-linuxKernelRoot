@@ -6,9 +6,6 @@
 #include <filesystem>
 
 #include "kernel_module_kit_umbrella.h"
-#include "command.h"
-#include "exec_process.h"
-#include "test.h"
 
 char ROOT_KEY[256] = {0};
 
@@ -53,7 +50,7 @@ void test_show_skroot_log() {
 }
 
 void test_root() {
-	printf("%s\n", get_root_test_report(ROOT_KEY));
+	printf("%s\n", skroot_env::get_root_status_report(ROOT_KEY));
 }
 
 void test_run_root_cmd(int argc, char* argv[]) {
@@ -67,23 +64,9 @@ void test_run_root_cmd(int argc, char* argv[]) {
 	printf("test_run_root_cmd(%s)\n", sstrCmd.str().c_str());
 
 	std::string result;
-	bool ret = run_root_cmd(ROOT_KEY, sstrCmd.str().c_str(), result);
-	printf("test_run_root_cmd ret:%s\n", ret ? "OK" : "FAILED");
+	KModErr err = skroot_env::run_root_cmd(ROOT_KEY, sstrCmd.str().c_str(), result);
+	printf("test_run_root_cmd ret:%s\n", to_string(err).c_str());
 	printf("test_run_root_cmd result:%s\n", result.c_str());
-}
-
-void test_root_exec_process(int argc, char* argv[]) {
-	std::stringstream ss;
-	for (int i = 0; i < argc; i++) {
-		ss << argv[i];
-		if (i != (argc - 1)) {
-			ss << " ";
-		}
-	}
-	printf("test_root_exec_process(%s)\n", ss.str().c_str());
-
-	bool ret = root_exec_process(ROOT_KEY, ss.str().c_str());
-	printf("root_exec_process ret:%s\n", ret ? "OK" : "FAILED");
 }
 
 void test_add_su_list(const char* app_package_name) {
@@ -150,13 +133,15 @@ static void print_desc_info(const skroot_env::module_desc& desc) {
     }
     printf("------------------------------\n");
 }
+
 void test_show_module_list() {
-	std::vector<skroot_env::module_desc> list1;
-	std::vector<skroot_env::module_desc> list2;
+	std::vector<skroot_env::module_desc> list1, list2, list3;
 	KModErr err1 = skroot_env::get_all_modules_list(ROOT_KEY, list1, skroot_env::ModuleListMode::All);
 	KModErr err2 = skroot_env::get_all_modules_list(ROOT_KEY, list2, skroot_env::ModuleListMode::RunningOnly);
+	KModErr err3 = skroot_env::get_all_modules_list(ROOT_KEY, list3, skroot_env::ModuleListMode::AbnormalOnly);
     printf("get_all_modules_list(All) err: %s, cnt:%zd\n", to_string(err1).c_str(), list1.size());
     printf("get_all_modules_list(RunningOnly) err: %s, cnt:%zd\n", to_string(err2).c_str(), list2.size());
+    printf("get_all_modules_list(AbnormalOnly) err: %s, cnt:%zd\n", to_string(err3).c_str(), list3.size());
 	if(is_ok(err1)) {
 		printf("All modules list:\n");
 		for(auto & m : list1) print_desc_info(m);
@@ -164,6 +149,10 @@ void test_show_module_list() {
 	if(is_ok(err2)) {
 		printf("Running modules list:\n");
 		for(auto & m : list2) printf("name:%s, uuid:%s\n", m.name, m.uuid);
+	}
+	if(is_ok(err2)) {
+		printf("Abnormal modules list:\n");
+		for(auto & m : list3) printf("name:%s, uuid:%s\n", m.name, m.uuid);
 	}
 }
 
@@ -200,7 +189,6 @@ int main(int argc, char* argv[]) {
 	printf("------------------ 权限测试与执行 ------------------\n");
 	printf("%-29s %s\n", "test", "测试 ROOT 权限");
 	printf("%-29s %s\n", "cmd <command>", "执行 ROOT 命令");
-	printf("%-29s %s\n\n","exec <file-path>", "以 ROOT 身份直接执行程序");
 
 	printf("------------------ SU 授权列表管理 ------------------\n");
 	printf("%-29s %s\n", "su-list add <package>", "将 APP 加入 SU 授权列表");
@@ -215,10 +203,7 @@ int main(int argc, char* argv[]) {
 	printf("%-29s %s\n\n", "module desc <zip_file_path>", "解析 SKRoot 模块的描述信息");
 	printf("%-29s %s\n\n", "module webui <mod_uuid>", "打开 SKRoot 模块 WebUI 页面");
 
-	printf("-------------------------------------------------------\n"
-		"本工具特点：\n"
-		"新一代SKRoot，跟面具完全不同思路，摆脱面具被检测的弱点，完美隐藏root功能，兼容安卓APP直接JNI稳定调用。\n"
-		"如需帮助，请使用对应的命令，或者查看上面的菜单。\n\n");
+	printf(""如需帮助，请使用对应的命令，或者查看上面的菜单。\n\n");
 	++argv;
 	--argc;
 	if (argc < 1) {
@@ -237,7 +222,6 @@ int main(int argc, char* argv[]) {
 		{"show-log", []() { test_show_skroot_log(); }},
 		{"test", []() { test_root(); }},
 		{"cmd", [argc, argv]() { test_run_root_cmd(argc - 1, argv + 1); }},
-		{"exec", [argc, argv]() { test_root_exec_process(argc - 1, argv + 1); }},
 		{"su-list", [argv]() {
 			const std::string sub = argv[1];
 			if(sub == "add") test_add_su_list(argv[2]);

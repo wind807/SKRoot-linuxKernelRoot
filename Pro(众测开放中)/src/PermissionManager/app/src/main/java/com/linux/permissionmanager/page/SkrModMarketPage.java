@@ -200,11 +200,9 @@ public class SkrModMarketPage {
 
     private List<SkrModMarketItem> parseMarketJson(String jsonStr) throws JSONException {
         if (jsonStr == null || jsonStr.trim().isEmpty()) return Collections.emptyList();
-
         JSONObject root = new JSONObject(jsonStr);
         JSONArray list = root.optJSONArray("module_list");
         if (list == null || list.length() == 0) return Collections.emptyList();
-
         List<SkrModMarketItem> result = new ArrayList<>(list.length());
         for (int i = 0; i < list.length(); i++) {
             JSONObject it = list.optJSONObject(i);
@@ -216,6 +214,8 @@ public class SkrModMarketPage {
             String uuid        = it.optString("uuid", "");
             String author      = it.optString("author", "");
             String updateDate  = it.optString("update_date", "");
+            boolean ban  = it.optBoolean("ban", false);
+            if(ban) continue;
             String sourceUrl = it.optString("source_url", "");
             String downloadUrl = it.optString("download_url", "");
             String downloadChnAlert = it.optString("download_chn_alert", "");

@@ -18,6 +18,13 @@ KModErr set_boot_fail_protect_enabled(const char* root_key, bool enabled);
 bool is_boot_fail_protect_enabled(const char* root_key);
 
 /***************************************************************************
+ * 获取当前 ROOT 测试报告
+ * 参数: root_key   ROOT 权限密钥文本
+ * 返回: ROOT 状态报告字符串
+ ***************************************************************************/
+const char* get_root_status_report(const char* root_key);
+
+/***************************************************************************
  * 测试 SKRoot 核心基础能力
  *
  * 参数: root_key   ROOT 权限密钥文本
@@ -35,6 +42,7 @@ enum class BasicItem : uint32_t {
 };
 
 KModErr test_skroot_basics(const char* root_key, BasicItem item, std::string& out);
+
 /***************************************************************************
  * 测试 SKRoot 自带默认模块
  * 参数: root_key   ROOT权限密钥文本
