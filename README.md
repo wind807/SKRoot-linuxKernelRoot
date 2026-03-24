@@ -7,7 +7,7 @@
 | 对比项 | 🟢 SKRoot (Lite) | 🚀 SKRoot (Pro) |
 | :--- | :--- | :--- |
 | **隐蔽性** | **完美隐藏 Root**、**SELinux 零触碰、无挂载** | **完美隐藏 Root**、**SELinux 零触碰、无挂载** |
-| **用途** | 面向基础 Root 场景，稳定性最佳。 | 拥有更强的控制能力。 |
+| **用途** | 面向基础 Root 场景，稳定性最佳。 | 更强的控制能力。 |
 | **功能** | 仅提供基础 Root 支持。 | 支持 **授权管理** + **内核模块**。 |
 | **进阶** | - | 隐藏目录、隐蔽执行sh、解除温控、系统文件无痕伪造等。 |
 | **模块能力** | - | 支持内核热修改Hook，**最多10万个Hook位置、0性能损耗**，单模块跨内核通用运行。 |
@@ -46,12 +46,12 @@
 
 2.将内核kernel文件拖拽置`patch_kernel_root.exe`即可一键自动化流程补丁内核，同时会自动生成Root密匙。
 
-3.安装并启动`PermissionManager.apk`或者`testRoot`，输入Root密匙值，即可正常使用SKRoot。
+3.安装并启动`skroot_lite.apk`或者`testRoot`，输入Root密匙值，即可正常使用SKRoot。
 
 ## SKRoot(Pro) 使用流程：
 *已全部开发完成，其中 “SKRootPro 模块开发 SDK” 已公开，其余组件将在稳定后逐步公开。*
 
-*目前正在众测中。如想加入测试组织，请关注TG频道：https://t.me/skrootabc*
+*目前正在众测中。如想加入测试组织，请关注TG频道：[t.me/skrootabc](https://t.me/skrootabc)*
 
 ## 更新日志：
 2026-3：
