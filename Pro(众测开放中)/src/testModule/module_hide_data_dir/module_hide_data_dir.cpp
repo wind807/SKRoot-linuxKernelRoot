@@ -6,7 +6,7 @@
 
 #include "cJSON.h"
 
-#define MOD_VER "1.0.4"
+#define MOD_VER "1.0.5"
 
 // 把 ["aa","bb","cc"] 解析成 std::set<std::string>
 static std::set<std::string> parse_json(const std::string& json) {

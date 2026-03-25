@@ -1,5 +1,5 @@
 ﻿// ====== 业务配置 ======
-const FORBIDDEN_KEYWORDS = ['system', 'vendor', 'data', 'app']; // 小写匹配
+const FORBIDDEN_KEYWORDS = ['system', 'vendor', 'data', 'app', 'local']; // 小写匹配
 const NAME_RULE = /^[A-Za-z0-9._\-+]+$/;
 const LS_KEY = 'hidden-folders-v1';
 
