@@ -166,12 +166,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String extractConfigValue(String text, String key) {
+        if(TextUtils.isEmpty(text)) return "";
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?m)^\\s*#.*?\\b" + java.util.regex.Pattern.quote(key) + "\\s*=\\s*(\\S+)");
         java.util.regex.Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1).trim() : "";
     }
 
     private void executeHotloadScript(String script, String method) {
+        if(TextUtils.isEmpty(script)) return;
         DialogUtils.dismissDialog(mLoadingDialog);
         mLoadingDialog = DialogUtils.showLoadingDialog(this, "正在加载热启动补丁，预计需要 1 分钟…");
         if (TextUtils.equals(method, "MAGICA")) executeMagicaRootScript(this, script, this::handleHotloadResult);
@@ -243,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             String scriptText = FileUtils.readTextFile(HOTLOAD_SHELL_PATH);
-            if (TextUtils.isEmpty(scriptText)) DialogUtils.showMsgDlg(this, "读取文件失败或文件不存在", "错误", null);
+            if (TextUtils.isEmpty(scriptText)) DialogUtils.showMsgDlg(this, "错误", "读取文件失败或文件不存在", null);
             String rootKey = extractConfigValue(scriptText, "ROOT_KEY");
             String method = extractConfigValue(scriptText, "METHOD");
             if (TextUtils.isEmpty(rootKey)) return;
