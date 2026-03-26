@@ -39,11 +39,9 @@ KModErr PatchThermalZoneGetTemp::patch_thermal_zone_get_temp() {
 	auto a = asm_ctx.assembler();
 	Label L_end = a->newLabel();
 	kernel_module::arm64_before_hook_start(a);
-
-	kernel_module::arm64hook_emit_load_original_func(a, x10);
 	{
 		RegProtectGuard g1(a, x1);
-		a->blr(x10); // 手动调用一次内核原始获取温度函数。
+		kernel_module::arm64_emit_call_original(a); // 手动调用一次内核原始获取温度函数。
 	}
 	a->cbnz(w0, L_end); // 返回值非0，代表不成功，则直接结束。
 

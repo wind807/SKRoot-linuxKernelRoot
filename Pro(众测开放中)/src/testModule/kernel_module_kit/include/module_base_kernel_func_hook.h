@@ -71,40 +71,36 @@ void arm64_after_hook_end(asmjit::a64::Assembler* a);
 KModErr install_kernel_function_after_hook(uint64_t target_func_kaddr, const std::vector<uint8_t>& hook_handler_code);
 
 /***************************************************************************
- * （可选）装载“原始函数入口地址”到寄存器 xReg
+ * （可选）手动执行原始函数
  * 作用：可在 Hook 处理函数内部，手动执行原始函数（不会再次命中本 Hook 导致死循环）
  *
  * 使用条件（重要）：
  *   - 仅适用于 Hook 点位为“目标函数入口地址”时使用。
- *   - 必须在 Hook 处理函数内部调用，如：arm64_before_hook_start() 与 arm64_before_hook_end() 之间、
- *      arm64_after_hook_start 与 arm64_after_hook_end之间调用。
+ *   - 必须在 Hook 处理函数内部调用。
  *
  * 注意事项：
- *   - 本函数只会覆盖 xReg，不会替你保存任何寄存器；需要保留的寄存器请在 blr 前自行保存。
- *   - 你需要显式写 a->blr(xReg) 才会真正执行原始函数一次。
- *   - 若你已手动 blr 执行过原始函数，则 arm64_before_hook_end 的 continue_original 参数需传 false，否则原始函数会再多执行一次，导致意外发生。
+ *   - 本函数不会替你保存任何寄存器；需要保留的寄存器请在调用前自行保存。
+ *   - 若你已手动执行过原始函数，则 arm64_before_hook_end 的 continue_original 参数需传 false，否则原始函数会再多执行一次，导致意外发生。
  *
  * 用法示例1：
  *   arm64_before_hook_start(a);
- *   arm64hook_emit_load_original_func(a, x16);
- *   a->blr(x16);
+ *   arm64_emit_call_original(a);
  *   arm64_before_hook_end(a, false);
- *
+ * 
  * 用法示例2：
+ *   arm64_after_hook_start(a);
+ *   arm64_emit_call_original(a);
+ *   arm64_after_hook_end(a);
+ * 
+ * 用法示例3：
  *   arm64_before_hook_start(a);
- *   arm64hook_emit_load_original_func(a, x16);
  *   {
- *     RegProtectGuard g1(a, x0, x1, x2); // 提前保存自己需要的参数，因为blr后会破坏寄存器值。
- *     a->blr(x16);
+ *     RegProtectGuard g1(a, x0, x1, x2); // 提前保存自己需要的参数，因为调用原始函数后会破坏寄存器值。
+ *     arm64_emit_call_original(a);
  *   }
  *   arm64_before_hook_end(a, false);
  *
- * 用法示例2：
- *   arm64_after_hook_start(a);
- *   arm64hook_emit_load_original_func(a, x16);
- *   a->blr(x16);
- *   arm64_after_hook_end(a, false);
  ***************************************************************************/
-void arm64hook_emit_load_original_func(asmjit::a64::Assembler* a, asmjit::a64::GpX xReg);
+void arm64_emit_call_original(asmjit::a64::Assembler* a);
 
 }

@@ -288,6 +288,9 @@ void local_irq_restore(Assembler* a, GpX flags);
 // 原型：int invalidate_inode_pages2(struct address_space *mapping); 返回值为 W0 寄存器
 void invalidate_inode_pages2(Assembler* a, KModErr& out_err, GpX mapping);
 
+// 原型：struct kprobe *get_kprobe(void *addr); 返回值为 X0 寄存器
+void get_kprobe(Assembler* a, KModErr& out_err, GpX addr);
+
 // 原型：void dump_stack(void); 无返回值
 void dump_stack(Assembler* a, KModErr& out_err);
 

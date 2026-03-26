@@ -662,6 +662,10 @@ inline void invalidate_inode_pages2(Assembler* a, KModErr& out_err, GpX mapping)
 	out_err = CallHelper::callNameAuto(a, "invalidate_inode_pages2", NeedReturnX0::Yes, mapping);
 }
 
+inline void get_kprobe(Assembler* a, KModErr& out_err, GpX addr) {
+	out_err = CallHelper::callNameAuto(a, "get_kprobe", NeedReturnX0::Yes, addr);
+}
+
 inline void dump_stack(Assembler* a, KModErr& out_err) {
 	out_err = CallHelper::callNameAuto(a, "dump_stack", NeedReturnX0::No);
 }
