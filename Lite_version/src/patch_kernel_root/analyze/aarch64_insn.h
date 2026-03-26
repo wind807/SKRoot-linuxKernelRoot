@@ -241,9 +241,19 @@ static bool aarch64_insn_uses_literal(uint32_t insn)
  * Extract the Op/CR data from a msr/mrs instruction.
  */
 static uint32_t aarch64_insn_extract_system_reg(uint32_t insn)
-{
-	return (insn & 0x1FFFE0) >> 5;
-}
+{ return (insn & 0x1FFFE0) >> 5; }
+
+static uint32_t aarch64_insn_extract_brk_imm(uint32_t insn)
+{ return (insn >> 5) & 0xFFFF; }
+
+static bool aarch64_insn_is_brk_imm(uint32_t insn, uint16_t imm)
+{ return aarch64_insn_is_brk(insn) && aarch64_insn_extract_brk_imm(insn) == imm; }
+
+static bool aarch64_insn_is_brk_0x4(uint32_t insn)
+{ return aarch64_insn_is_brk_imm(insn, 0x4); }
+
+static bool aarch64_insn_is_brk_0x6(uint32_t insn)
+{ return aarch64_insn_is_brk_imm(insn, 0x6); }
 
 static bool aarch64_insn_is_pac_or_bti(uint32_t insn) {
 	return aarch64_insn_is_paciaz(insn)

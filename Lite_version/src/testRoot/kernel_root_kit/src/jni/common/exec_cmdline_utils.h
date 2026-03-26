@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 extern char **environ;
 
@@ -82,11 +84,11 @@ static bool build_cmdline_argv(const char *cmdline, cmdline_argv &out) {
             while (*p && *p != quote) {
                 *dst++ = *p++;
             }
-            *dst = '\0';
-
+            
             if (*p == quote) {
                 ++p;
             }
+            *dst = '\0';
         } else {
             while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r') {
                 ++p;
@@ -123,6 +125,25 @@ static int execve_cmdline(const char *cmdline, char *const envp[] = NULL) {
 
     free_cmdline_argv(data);
     return -1;
+}
+
+static int fork_execve_cmdline(const char *cmdline, char *const envp[] = NULL) {
+    pid_t child = fork();
+    if (child < 0) {
+        return -1;
+    }
+
+    if (child == 0) {
+        execve_cmdline(cmdline, envp);
+        _exit(127);
+    }
+
+    int status = 0;
+    if (waitpid(child, &status, 0) < 0) {
+        return -1;
+    }
+
+    return status;
 }
 
 #endif // EXEC_CMDLINE_UTILS_H
