@@ -42,7 +42,12 @@ size_t PatchBase::patch_jump(size_t patch_addr, size_t jump_addr, std::vector<pa
 }
 
 bool PatchBase::is_CONFIG_THREAD_INFO_IN_TASK() {
-	return !m_kernel_ver_parser.is_kernel_version_less("4.4.207");
+	int cnt = 0;
+	for (auto i = 0; i < m_file_buf.size() - 4; i += 4) {
+		uint32_t insn = *(uint32_t*)& m_file_buf[i];
+		if (aarch64_insn_is_mrs_sp_el0(insn)) cnt++;
+	}
+	return cnt > 5000;
 }
 
 void PatchBase::emit_get_current(Assembler* a, GpX x) {

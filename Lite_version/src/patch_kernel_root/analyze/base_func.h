@@ -72,21 +72,18 @@ static std::string bytes2hex(const unsigned char* input, size_t length) {
 
 static bool write_file_bytes(const char* file_path, size_t offset, const char* bytes, size_t len) {
 	std::fstream file_stream(file_path, std::ios::in | std::ios::out | std::ios::binary);
-	if (!file_stream) {
-		return false;
-	}
+	if (!file_stream) return false;
 	file_stream.seekp(offset);
-	if (!file_stream.good()) {
-		file_stream.close();
-		return false;
-	}
+	if (!file_stream.good()) return false;
 	file_stream.write(bytes, len);
-	if (!file_stream.good()) {
-		file_stream.close();
-		return false;
-	}
-	file_stream.close();
-	return true;
+	return file_stream.good();
+}
+
+static bool write_file_text(const char* file_path, const char* text) {
+	std::fstream file_stream(file_path, std::ios::out | std::ios::binary);
+	if (!file_stream) return false;
+	file_stream.write(text, static_cast<std::streamsize>(std::strlen(text)));
+	return static_cast<bool>(file_stream);
 }
 
 template <size_t N>

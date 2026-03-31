@@ -17,12 +17,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%kernel_root_path%/common/f
 
 powershell -ExecutionPolicy Bypass -File "%kernel_root_path%/common/file_convert_to_source_tools.ps1" -InFile "%work_path%/index.gz.bin"
 
-:: 将res.h文件中的文本进行替换
 powershell -Command "(Get-Content res.h) -replace 'namespace {', 'namespace web_server {' | Set-Content res.h"
 powershell -Command "(Get-Content res.h) -replace 'fileSize', 'index_html_gz_size' | Set-Content res.h"
 powershell -Command "(Get-Content res.h) -replace 'data', 'index_html_gz_data' | Set-Content res.h"
 
-:: 将临时文件重命名为最终的文件名
 move /Y res.h index_html_gz_data.generated.h
 
 if exist res.h (

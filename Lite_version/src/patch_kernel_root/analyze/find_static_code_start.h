@@ -3,6 +3,7 @@
 #include <vector>
 #include <string.h>
 #include "base_func.h"
+#include "analyze/aarch64_insn.h"
 
 #define A64_NOP 0xD503201F
 
@@ -16,8 +17,22 @@ static bool __is_really_empty(const std::vector<char>& file_buf, size_t start_po
 	return true;
 }
 
+static bool __is_really_all_b(const std::vector<char>& file_buf, size_t start_pos) {
+	const size_t must_b_cnt = 80;
+	for (size_t i = start_pos; i < start_pos + must_b_cnt * 4; i += 4) {
+		if (i + 4 > file_buf.size()) return false;
+		uint32_t w = rd32_le(file_buf, i);
+		if (w == 0 || w == A64_NOP) return false;
+		if (!aarch64_insn_is_b(w)) return false;
+	}
+	return true;
+}
+
 static bool __is_really_work(const std::vector<char>& file_buf, size_t start_pos) {
 	const size_t must_work_cnt = 80;
+	if (__is_really_all_b(file_buf, start_pos)) {
+		return false;
+	}
 	for (size_t i = start_pos; i < start_pos + must_work_cnt * 4; i += 4) {
 		uint32_t w = rd32_le(file_buf, i);
 		if (w == 0) return false;

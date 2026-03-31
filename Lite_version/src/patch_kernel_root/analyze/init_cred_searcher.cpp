@@ -5,9 +5,11 @@
 
 #define ATOMIC_INIT_4						4
 #define SECUREBITS_DEFAULT			0
-#define CAP_FULL_SET						0x3FFFFFFFFF
-#define CAP_FULL_SET_5_8_0				0xFFFFFFFFFF
-#define CAP_FULL_SET_5_9_0				0x1FFFFFFFFFF
+
+#define CAP_FULL_SET						0x1FFFFFFFFFULL
+#define CAP_FULL_SET_3_16_0			0x3FFFFFFFFFULL
+#define CAP_FULL_SET_5_8_0				0xFFFFFFFFFFULL
+#define CAP_FULL_SET_5_9_0				0x1FFFFFFFFFFULL
 
 namespace {
 #pragma pack(push, 1)
@@ -92,7 +94,7 @@ std::vector<InitCredResult> InitCredSearcher::build_usage_candidates_impl() {
 	Head4T head_u4;
 	Head8T head_u8;
 	std::vector<InitCredResult> out;
-	uint64_t cap_max_arr[3] = { CAP_FULL_SET_5_9_0, CAP_FULL_SET_5_8_0, CAP_FULL_SET };
+	uint64_t cap_max_arr[] = { CAP_FULL_SET_5_9_0, CAP_FULL_SET_5_8_0, CAP_FULL_SET_3_16_0, CAP_FULL_SET };
 	int cap_cnt = get_cap_cnt();
 	for (auto cap_max : cap_max_arr) {
 		cred_cap_info4 cap4{};
