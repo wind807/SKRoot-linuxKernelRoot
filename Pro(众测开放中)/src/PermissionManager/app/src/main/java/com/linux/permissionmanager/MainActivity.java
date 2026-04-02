@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
                     DialogUtils.showMsgDlg(this, "提示","加载完成", null);
                     setupFragment();
                     switchPage(0);
-                } else DialogUtils.showLogDialog(this, mHotloadResult);
+                } else DialogUtils.showLogDialog(this, mHotloadResult, true);
             }, 3000);
         });
     }

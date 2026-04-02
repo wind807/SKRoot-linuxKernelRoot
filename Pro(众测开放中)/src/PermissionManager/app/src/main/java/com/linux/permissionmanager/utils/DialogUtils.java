@@ -132,7 +132,7 @@ public class DialogUtils {
         dialog.show();
     }
 
-    public static void showLogDialog(Context context, String logs) {
+    public static void showLogDialog(Context context, String logs, boolean scrollToBottoom) {
         // 创建全屏 Dialog
         Dialog dialog = new Dialog(context);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -161,9 +161,11 @@ public class DialogUtils {
         ));
 
         // 让 ScrollView 自动滚动到底部
-        scrollView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-            scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
-        });
+        if(scrollToBottoom) {
+            scrollView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+                scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
+            });
+        }
 
         // === 底部按钮区域：复制 + 关闭 ===
         LinearLayout buttonBar = new LinearLayout(context);

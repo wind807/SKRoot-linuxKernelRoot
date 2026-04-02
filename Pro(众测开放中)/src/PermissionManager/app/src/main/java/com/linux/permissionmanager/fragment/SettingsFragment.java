@@ -31,6 +31,7 @@ public class SettingsFragment extends Fragment {
     private CheckBox mCkboxEnableBootFailProtect;
     private Button mBtnTestSkrootBasics;
     private Button mBtnTestSkrootDefaultModule;
+    private Button mBtnReboot;
     private CheckBox mCkboxEnableSkrootLog;
     private Button mBtnShowSkrootLog;
     private TextView mTvAboutVer;
@@ -63,6 +64,7 @@ public class SettingsFragment extends Fragment {
         mCkboxEnableBootFailProtect = view.findViewById(R.id.enable_boot_fail_protect_ckbox);
         mBtnTestSkrootBasics = view.findViewById(R.id.test_skroot_basics_btn);
         mBtnTestSkrootDefaultModule = view.findViewById(R.id.test_skroot_default_module_btn);
+        mBtnReboot = view.findViewById(R.id.reboot_btn);
         mCkboxEnableSkrootLog = view.findViewById(R.id.enable_skroot_log_ckbox);
         mBtnShowSkrootLog = view.findViewById(R.id.show_skroot_log_btn);
         mTvAboutVer = view.findViewById(R.id.about_ver_tv);
@@ -88,6 +90,7 @@ public class SettingsFragment extends Fragment {
         );
         mBtnTestSkrootBasics.setOnClickListener((v) -> showSelectTestSkrootBasicsDlg());
         mBtnTestSkrootDefaultModule.setOnClickListener((v) -> showSelectTestDefaultModuleDlg());
+        mBtnReboot.setOnClickListener((v) -> showConfirmRestartZygote64());
 
         mCkboxEnableSkrootLog.setOnCheckedChangeListener(null);
         mCkboxEnableSkrootLog.setChecked(NativeBridge.isSkrootLogEnabled(mRootKey));
@@ -120,7 +123,7 @@ public class SettingsFragment extends Fragment {
                 else if(which == 4) item = "WriteTrampoline";
                 String log = NativeBridge.testSkrootBasics(mRootKey, item);
                 if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\\n请先卸载 SKRoot 环境，再重试。";
-                DialogUtils.showLogDialog(mActivity, log);
+                DialogUtils.showLogDialog(mActivity, log, true);
             }
         });
         builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
@@ -146,7 +149,7 @@ public class SettingsFragment extends Fragment {
                 else if(which == 3) defName = "SuRedirectExec";
                 String log = NativeBridge.testSkrootDefaultModule(mRootKey, defName);
                 if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\\n请先卸载 SKRoot 环境，再重试。";
-                DialogUtils.showLogDialog(mActivity, log);
+                DialogUtils.showLogDialog(mActivity, log, true);
             }
         });
         builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
@@ -157,9 +160,21 @@ public class SettingsFragment extends Fragment {
         dialog.show();
     }
 
+    private void showConfirmRestartZygote64() {
+        DialogUtils.showCustomDialog(mActivity, "确认", "确定要软重启吗？", null,"确定",
+                (dialog, which) -> {
+                    dialog.dismiss();
+                    String tip = NativeBridge.restartZygote64(mRootKey);
+                    DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
+                },"取消", (dialog, which) -> {
+                    dialog.dismiss();
+                }
+        );
+    }
+
     private void showSkrootLogDlg() {
         String log = NativeBridge.readSkrootLog(mRootKey);
-        DialogUtils.showLogDialog(mActivity, log);
+        DialogUtils.showLogDialog(mActivity, log, true);
     }
 
     private void initAboutText() {
@@ -180,7 +195,7 @@ public class SettingsFragment extends Fragment {
 
     private void onDownloadChangeLogApp(AppUpdateInfo updateInfo) {
         mUpdateManager.requestAppChangelog(updateInfo,
-                (content) -> DialogUtils.showLogDialog(mActivity, content),
+                (content) -> DialogUtils.showLogDialog(mActivity, content, false),
                 (e) -> DialogUtils.showMsgDlg(mActivity, "提示", "App 更新日志下载失败：" + e.getMessage(),null)
         );
     }

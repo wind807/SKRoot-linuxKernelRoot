@@ -175,7 +175,7 @@ public class SkrModInstalledPage {
 
     private void onShowDetailsSkrMod(SkrModInstalledItem skrMod) {
         String details = SkrModPrinter.buildModuleMeta(skrMod);
-        DialogUtils.showLogDialog(mActivity, details);
+        DialogUtils.showLogDialog(mActivity, details, true);
     }
 
     private void onOpenSkrModWebUI(SkrModInstalledItem skrMod) {
@@ -204,7 +204,7 @@ public class SkrModInstalledPage {
 
     private void onDownloadChangeLogSkrMod(SkrModInstalledItem skrMod) {
         mUpdateManager.requestModuleChangelog(skrMod,
-                (item, content) -> DialogUtils.showLogDialog(mActivity, content),
+                (item, content) -> DialogUtils.showLogDialog(mActivity, content, false),
                 (item, e) -> DialogUtils.showMsgDlg(mActivity,"提示", "下载模块 \"" + item.getName() + "\" 的更新日志失败：" + e.getMessage(),null)
         );
     }

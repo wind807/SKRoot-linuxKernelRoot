@@ -1,6 +1,16 @@
 ﻿#pragma once
 #include <random>
 #include <cstdint>
+
+#ifndef PAGE_SIZE
+#define PAGE_SIZE           ((size_t)sysconf(_SC_PAGESIZE))
+#endif
+#ifndef PAGE_MASK
+#define PAGE_MASK           (~(PAGE_SIZE - 1))
+#endif
+#define PAGE_ALIGN(addr)    (((addr) + PAGE_SIZE - 1) & PAGE_MASK)
+#define PAGE_SHIFT          __builtin_ctzl(sysconf(_SC_PAGESIZE))
+
 #define STATIC_ASSERT_SIZE_MULTIPLE_OF_4(x) \
     static_assert(sizeof(x) % 4 == 0, #x " sizeof() must be multiple of 4")
     

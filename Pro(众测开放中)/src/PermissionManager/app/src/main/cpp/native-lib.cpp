@@ -393,6 +393,17 @@ Java_com_linux_permissionmanager_bridge_NativeBridge_testSkrootDefaultModule(
     return env->NewStringUTF(sstr.str().c_str());
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_linux_permissionmanager_bridge_NativeBridge_restartZygote64(
+        JNIEnv* env,
+        jclass /* this */,
+        jstring rootKey) {
+    string strRootKey = jstringToStr(env, rootKey);
+    KModErr err = restart_zygote64(strRootKey.c_str());
+    stringstream sstr;
+    sstr << "restart_zygote64: " << to_string(err).c_str();
+    return env->NewStringUTF(sstr.str().c_str());
+}
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_linux_permissionmanager_bridge_NativeBridge_setSkrootLogEnabled(

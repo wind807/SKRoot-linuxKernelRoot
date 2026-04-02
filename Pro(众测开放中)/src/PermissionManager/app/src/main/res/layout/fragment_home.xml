@@ -17,7 +17,7 @@
         android:layout_marginTop="5dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="无视全网检测手段，实现 SELinux 零触碰、无挂载。免源码直接 Patch 原厂内核，完美保留官方内核所有特性。模块特性：支持内核热修改Hook，最多10万个Hook位置、0性能损耗，单模块跨内核通用运行。"
+        android:text="无视全网检测手段，实现 SELinux 零触碰、无挂载。免源码直接 Patch 原厂内核，完美保留官方内核所有特性。模块特性：支持内核热修改Hook，内核偏移动态获取 (真正跨内核通用)，最高10万+ Hook 位置 / 0性能损耗。"
         />
 
     <View

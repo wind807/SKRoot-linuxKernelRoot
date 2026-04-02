@@ -6,9 +6,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ResultReceiver;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.concurrent.CountDownLatch;
@@ -36,15 +41,12 @@ public class MagicaRootHelper {
                 serverRef.set(server);
                 latch.countDown();
 
-                // 超时线程：如果一直没有 accept 到连接，就主动关闭 server 打断 accept()
+                // 超时线程
                 Thread timeoutThread = new Thread(() -> {
                     try {
                         Thread.sleep(acceptTimeoutMs);
                         if (!accepted.get() && finished.compareAndSet(false, true)) {
-                            try {
-                                LocalServerSocket s = serverRef.get();
-                                if (s != null) s.close();
-                            } catch (Throwable ignore) {}
+                            closeServerQuietly(serverRef.get());
                             callback.onResult("ERROR: accept timeout");
                         }
                     } catch (InterruptedException ignored) {
@@ -74,9 +76,8 @@ public class MagicaRootHelper {
             } catch (Throwable t) {
                 t.printStackTrace();
                 latch.countDown();
-                // 如果不是已经超时/已经成功，才回调异常
                 if (finished.compareAndSet(false, true)) {
-                    callback.onResult("ERROR: " + t.getMessage());
+                    callback.onResult("ERROR: Socket server error - " + t.getMessage());
                 }
             }
         }).start();
@@ -90,6 +91,39 @@ public class MagicaRootHelper {
             }
             return;
         }
-        context.startService(new Intent(context, MagicaService.class));
+
+        // 创建 ResultReceiver 接收 Service 内部状态
+        ResultReceiver receiver = new ResultReceiver(new Handler(Looper.getMainLooper())) {
+            @Override
+            protected void onReceiveResult(int resultCode, Bundle resultData) {
+                // -1 代表 Service 内部发生了异常
+                if (resultCode == -1 && finished.compareAndSet(false, true)) {
+                    String errorMsg = resultData != null ? resultData.getString("error") : "Unknown Service Error";
+                    closeServerQuietly(serverRef.get());
+                    callback.onResult("ERROR: Service internal failure - " + errorMsg);
+                }
+            }
+        };
+
+        Intent intent = new Intent(context, MagicaService.class);
+        intent.putExtra("receiver", receiver);
+
+        try {
+            // 捕获系统拦截 (例如 IllegalStateException: Not allowed to start service)
+            context.startService(intent);
+        } catch (Exception e) {
+            if (finished.compareAndSet(false, true)) {
+                closeServerQuietly(serverRef.get());
+                callback.onResult("ERROR: System intercepted startService - " + e.getMessage());
+            }
+        }
+    }
+
+    private static void closeServerQuietly(LocalServerSocket server) {
+        if (server != null) {
+            try {
+                server.close();
+            } catch (IOException ignored) {}
+        }
     }
 }

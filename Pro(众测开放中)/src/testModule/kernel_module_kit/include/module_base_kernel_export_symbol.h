@@ -291,6 +291,19 @@ void invalidate_inode_pages2(Assembler* a, KModErr& out_err, GpX mapping);
 // 原型：struct kprobe *get_kprobe(void *addr); 返回值为 X0 寄存器
 void get_kprobe(Assembler* a, KModErr& out_err, GpX addr);
 
+// 原型：int apply_to_page_range(struct mm_struct *mm, unsigned long addr, unsigned long size, pte_fn_t fn, void *data); 返回值为 W0 寄存器
+void apply_to_page_range(Assembler* a, KModErr& out_err, GpX mm, GpX addr, GpX size, GpX fn, GpX data);
+
+// 原型：int apply_to_existing_page_range(struct mm_struct *mm, unsigned long addr, unsigned long size, pte_fn_t fn, void *data); 返回值为 W0 寄存器
+void apply_to_existing_page_range(Assembler* a, KModErr& out_err, GpX mm, GpX addr, GpX size, GpX fn, GpX data);
+
+// 原型：unsigned long vmalloc_to_pfn(const void *vmalloc_addr); 返回值为 X0 寄存器
+void vmalloc_to_pfn(Assembler* a, KModErr& out_err, GpX vmalloc_addr);
+
+// 原型：#define pfn_pte(pfn, prot); 返回值为 X0 寄存器
+void pfn_pte(Assembler* a, GpX pfn, GpX prot);
+void pfn_pte(Assembler* a, GpX pfn, uint64_t prot_val);
+
 // 原型：void dump_stack(void); 无返回值
 void dump_stack(Assembler* a, KModErr& out_err);
 

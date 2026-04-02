@@ -125,6 +125,7 @@ public class SuAuthFragment extends Fragment {
         popupMenu.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.add_su_auth) onShowSelectAddSuAuthList();
+            if (itemId == R.id.add_adb_auth) onAddAdbAuthList();
             else if (itemId == R.id.clear_su_auth) onClearSuAuth();
             return true;
         });
@@ -148,6 +149,12 @@ public class SuAuthFragment extends Fragment {
         show_thirty_app_ckbox.setChecked(true);
     }
 
+    private void onAddAdbAuthList() {
+        String tip = NativeBridge.addSuAuth(mRootKey, "com.android.shell");
+        DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
+        setupSuAuthRecyclerView();
+    }
+
     private void onAddSuAuth(SelectAppItem app) {
         String appPackageName = app.getPackageName();
         String tip = NativeBridge.addSuAuth(mRootKey, appPackageName);
@@ -165,8 +172,7 @@ public class SuAuthFragment extends Fragment {
                     String tip = NativeBridge.removeSuAuth(mRootKey, appPackageName);
                     DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
                     setupSuAuthRecyclerView();
-                },
-                "取消", (dialog, which) -> {
+                },"取消", (dialog, which) -> {
                     dialog.dismiss();
                 }
         );

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "kernel_module_kit_umbrella.h"
+#include "module_math.h"
 #include "aarch64_kernel_sym_call_helper.h"
 
 
@@ -664,6 +665,36 @@ inline void invalidate_inode_pages2(Assembler* a, KModErr& out_err, GpX mapping)
 
 inline void get_kprobe(Assembler* a, KModErr& out_err, GpX addr) {
 	out_err = CallHelper::callNameAuto(a, "get_kprobe", NeedReturnX0::Yes, addr);
+}
+
+inline void apply_to_page_range(Assembler* a, KModErr& out_err, GpX mm, GpX addr, GpX size, GpX fn, GpX data) {
+	out_err = CallHelper::callNameAuto(a, "apply_to_page_range", NeedReturnX0::Yes, mm, addr, size, fn, data);
+}
+
+inline void apply_to_existing_page_range(Assembler* a, KModErr& out_err, GpX mm, GpX addr, GpX size, GpX fn, GpX data) {
+	out_err = CallHelper::callNameAuto(a, "apply_to_existing_page_range", NeedReturnX0::Yes, mm, addr, size, fn, data);
+}
+
+inline void vmalloc_to_pfn(Assembler* a, KModErr& out_err, GpX vmalloc_addr) {
+	out_err = CallHelper::callNameAuto(a, "vmalloc_to_pfn", NeedReturnX0::Yes, vmalloc_addr);
+}
+
+inline void pfn_pte(Assembler* a, GpX pfn, GpX prot) {
+	IdleRegPool pool = IdleRegPool::make(x0, pfn, prot);
+	GpX xTempPfn = pool.acquireX();
+	GpX xTempProt = pool.acquireX();
+	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
+	a->mov(xTempPfn, pfn);
+	a->mov(xTempProt, prot);
+	a->lsl(x0, xTempPfn, PAGE_SHIFT);
+	a->orr(x0, x0, xTempProt);
+}
+
+inline void pfn_pte(Assembler* a, GpX pfn, uint64_t prot_val) {
+	IdleRegPool pool = IdleRegPool::make(pfn);
+	GpX xProt = pool.acquireX();
+	aarch64_asm_mov_x(a, xProt, prot_val);
+	pfn_pte(a, pfn, xProt);
 }
 
 inline void dump_stack(Assembler* a, KModErr& out_err) {

@@ -58,4 +58,12 @@ enum class DeafultModuleName: uint32_t {
 };
 KModErr test_skroot_deafult_module(const char* root_key, DeafultModuleName name, std::string& out);
 
+
+/***************************************************************************
+ * 重启 zygote64 进程（软重启）
+ * 参数: root_key   ROOT权限密钥文本
+ * 返回: OK 表示正常
+ ***************************************************************************/
+KModErr restart_zygote64(const char* root_key);
+
 }
