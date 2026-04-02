@@ -1,17 +1,17 @@
 # SKRoot - Linux 内核级完美隐藏 Root 方案
 
-新一代 SKRoot，完美隐藏Root功能，无视全网检测手段，**实现SELinux零触碰、无挂载**，通杀所有内核，**免源码直接 Patch 原厂内核，完美保留官方内核所有特性**。
+新一代 SKRoot，完美隐藏Root功能，无视全网检测手段，**实现SELinux零触碰、无挂载！** 通杀所有内核，**免源码直接 Patch 原厂内核，完美保留官方内核所有特性**。
 
 ## 版本对比
 
 | 对比项 | 🟢 SKRoot (Lite) | 🚀 SKRoot (Pro) |
 | :--- | :--- | :--- |
-| **隐蔽性** | **完美隐藏 Root**、**SELinux 零触碰、无挂载** | **完美隐藏 Root**、**SELinux 零触碰、无挂载** |
-| **寄生** | **寄生躲进其他APP内**，支持彻底卸载管理器，做到无实体特征。 | **寄生躲进其他APP内**，支持彻底卸载管理器，做到无实体特征。  |
-| **用途** | **稳定优先**，面向基础 Root 场景。 | 更强的控制能力。 |
-| **功能** | 仅提供基础 Root 支持。 | 支持 **授权管理** + **内核模块** + **免解越狱**。 |
+| **隐蔽性** | 完美隐藏 Root、SELinux 零触碰、无挂载 | 完美隐藏 Root、SELinux 零触碰、无挂载 |
+| **防检测** | **寄生**于其他 APP 内，**无实体特征**。 | **寄生**于其他APP内，**无实体特征**。  |
+| **用途** | **稳定和兼容性**优先。 | **更强的控制能力**。 |
+| **功能** | **核心 Root 环境**。 | **授权管理 + 内核模块 + 免解越狱**。 |
 | **进阶** | - | 隐藏目录、隐蔽执行sh、解除温控、系统文件无痕伪造等。 |
-| **模块能力** | - | 支持内核热修改Hook；**最多10万个Hook位置、0性能损耗**；内核偏移**动态获取**，真正做到**跨内核通用运行**。 |
+| **模块能力** | - | 支持**内核热修改 Hook**<br>内核偏移**动态获取**(真正跨内核通用)<br>**最高10万+ Hook 位置 / 0性能损耗** 。 |
 
 ## 功能列表：
 1.测试ROOT权限
@@ -43,7 +43,7 @@
 2. 其中【**注入su到指定进程**】**只支持授权su到64位的APP**，老式32位App不再进行支持。
 
 ## SKRoot(Lite) 使用流程：
-1.下载源码编译或**下载编译产物**： [patch_kernel_root.exe](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.3.20/patch_kernel_root.2026-3-20.exe)、 [skroot_lite.apk](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.3.20/SKRoot_Lite.2026-3-20.apk)
+1.下载源码编译或**下载编译产物**： [patch_kernel_root.exe](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.3.31/patch_kernel_root.2026-3-31.exe)、 [skroot_lite.apk](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.3.31/SKRoot_Lite.2026-3-20.apk)
 
 2.将内核kernel文件拖拽置`patch_kernel_root.exe`即可一键自动化流程补丁内核，同时会自动生成Root密匙。
 
@@ -59,7 +59,8 @@
   * 1.修复部分Linux6.12无法解析的问题。
   * 2.修复Linux 5.15会睡死的问题。
   * 3.修复部分Linux4.x内核无法开机的问题。
-  * 4.增强寄生App功能的稳定性。
+  * 4.修复CONFIG_THREAD_INFO_IN_TASK判断错误的问题。
+  * 5.增强寄生App功能的稳定性。
   
 2026-2：
   * 1.修复su无法独立后台运行的问题。
