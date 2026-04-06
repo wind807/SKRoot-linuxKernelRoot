@@ -233,6 +233,7 @@ button.solid:disabled{
   z-index: 60;
   padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
 }
+
 .modal{
   width: min(720px, 100%);
   background: #fff;
@@ -241,15 +242,12 @@ button.solid:disabled{
   box-shadow: var(--shadow);
   overflow:hidden;
 
-  height: 94vh;
-  min-height: 520px;
-  max-height: 94vh;
+  height: 90%;
+  max-height: calc(100% - 24px);
+  min-height: 0;
 
   display:flex;
   flex-direction:column;
-}
-@media (max-height: 700px){
-  .modal{ min-height: 0; height: 94vh; }
 }
 
 .modal-hd{
