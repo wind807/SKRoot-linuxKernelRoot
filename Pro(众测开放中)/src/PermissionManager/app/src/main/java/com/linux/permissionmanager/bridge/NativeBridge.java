@@ -32,6 +32,7 @@ public final class NativeBridge {
     public static native String setSkrootLogEnabled(String rootKey, boolean enable);
     public static native boolean isSkrootLogEnabled(String rootKey);
     public static native String readSkrootLog(String rootKey);
+    public static native String clearSkrootLog(String rootKey);
 
 
 }

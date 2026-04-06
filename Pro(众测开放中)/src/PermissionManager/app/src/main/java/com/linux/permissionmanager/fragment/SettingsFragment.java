@@ -34,6 +34,7 @@ public class SettingsFragment extends Fragment {
     private Button mBtnReboot;
     private CheckBox mCkboxEnableSkrootLog;
     private Button mBtnShowSkrootLog;
+    private Button mBtnClearSkrootLog;
     private TextView mTvAboutVer;
     private TextView mTvLink;
     private TextView mTvTg;
@@ -67,6 +68,7 @@ public class SettingsFragment extends Fragment {
         mBtnReboot = view.findViewById(R.id.reboot_btn);
         mCkboxEnableSkrootLog = view.findViewById(R.id.enable_skroot_log_ckbox);
         mBtnShowSkrootLog = view.findViewById(R.id.show_skroot_log_btn);
+        mBtnClearSkrootLog = view.findViewById(R.id.clear_skroot_log_btn);
         mTvAboutVer = view.findViewById(R.id.about_ver_tv);
         mTvLink = view.findViewById(R.id.link_tv);
         mTvTg = view.findViewById(R.id.tg_tv);
@@ -101,6 +103,7 @@ public class SettingsFragment extends Fragment {
                 }
         );
         mBtnShowSkrootLog.setOnClickListener(v -> showSkrootLogDlg());
+        mBtnClearSkrootLog.setOnClickListener(v -> clearSkrootLog());
         mUpdateManager = new AppUpdateManager(mActivity);
         initAboutText();
         initLink();
@@ -175,6 +178,11 @@ public class SettingsFragment extends Fragment {
     private void showSkrootLogDlg() {
         String log = NativeBridge.readSkrootLog(mRootKey);
         DialogUtils.showLogDialog(mActivity, log, true);
+    }
+
+    private void clearSkrootLog() {
+        String tip = NativeBridge.clearSkrootLog(mRootKey);
+        DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
     }
 
     private void initAboutText() {

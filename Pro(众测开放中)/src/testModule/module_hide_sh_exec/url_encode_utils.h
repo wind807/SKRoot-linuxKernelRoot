@@ -21,8 +21,8 @@ int main() {
 	return 0;
 }
 */
-static void url_encode(char *str, char *encoded_str) {
-	char *pstr = str, *buf = encoded_str;
+static void url_encode(const char *str, char *encoded_str) {
+	char *pstr = (char*)str, *buf = encoded_str;
 	while (*pstr) {
 		unsigned char c = *pstr;
 		if (c <= 0x7F) { // ASCII

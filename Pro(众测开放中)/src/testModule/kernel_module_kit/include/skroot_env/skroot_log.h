@@ -24,4 +24,11 @@ KModErr set_skroot_log_enabled(const char* root_key, bool enable);
 * 返回: true 表示开启日志，false表示关闭日志
 ***************************************************************************/
 bool is_skroot_log_enabled(const char* root_key);
+
+/***************************************************************************
+* 清空一次 SKRoot 日志
+* 参数: root_key     ROOT权限密钥文本
+* 返回: OK 表示清空成功；其他值为错误码
+***************************************************************************/
+KModErr clear_skroot_log(const char* root_key);
 }

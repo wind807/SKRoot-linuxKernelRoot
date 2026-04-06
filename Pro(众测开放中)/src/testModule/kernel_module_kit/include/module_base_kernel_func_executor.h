@@ -8,7 +8,7 @@
 #include <errno.h>
 #include "kernel_module_kit_umbrella.h"
 
-#include "____DO_NOT_EDIT____/private_mod_api_runtime_helper.h"
+#include "third_party/____DO_NOT_EDIT____/private_mod_api_runtime_helper.h"
 namespace kernel_module {
 // arm64模块汇编函数入口：保存调用函数上下文
 void arm64_module_asm_func_start(asmjit::a64::Assembler* a);

@@ -3,10 +3,10 @@
 #include <vector>
 #include <string>
 #include <unistd.h>
-#include "../module_err_def.h"
-#include "../skroot_env/skroot_module.h"
-#include "../skroot_env/skroot_su_auth.h"
-#include "../skroot_env/skroot_test.h"
+#include "../../module_err_def.h"
+#include "../../skroot_env/skroot_module.h"
+#include "../../skroot_env/skroot_su_auth.h"
+#include "../../skroot_env/skroot_test.h"
 namespace skroot_env {
 inline KModErr read_skroot_log(const char* root_key, std::string& out) {
     thread_local std::string* tls_out = nullptr;
@@ -63,7 +63,6 @@ inline KModErr get_su_auth_list(const char* root_key, std::vector<su_auth_item>&
     tls_out = nullptr; 
     return err;
 }
-
 
 inline KModErr test_skroot_basics(const char* root_key, BasicItem item, std::string& out) {
     thread_local std::string* tls_out = nullptr;

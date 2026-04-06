@@ -7,7 +7,7 @@
 #include <string.h>
 #include <vector>
 #include <errno.h>
-#include "____DO_NOT_EDIT____/private_mod_api_runtime_helper.h"
+#include "third_party/____DO_NOT_EDIT____/private_mod_api_runtime_helper.h"
 
 namespace kernel_module {
     

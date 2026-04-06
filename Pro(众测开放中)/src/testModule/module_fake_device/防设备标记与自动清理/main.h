@@ -9,12 +9,6 @@
 #include <sys/wait.h>
 namespace fs = std::filesystem;
 
-static void android_open_url(const std::string& url) {
-    std::string cmd = "am start -a android.intent.action.VIEW -d " + url;
-    FILE * fp = popen(cmd.c_str(), "r");
-    if(fp) pclose(fp);
-}
-
 template <class Fn>
 static pid_t spawn_delayed_task(unsigned delay_sec, Fn&& fn) {
     using F = std::decay_t<Fn>;
@@ -41,29 +35,8 @@ static bool is_all_digits(const std::string& s) {
     return true;
 }
 
-static bool is_pkg_running(const std::string& pkg) {
-    std::error_code ec;
-    for (fs::directory_iterator it("/proc", fs::directory_options::skip_permission_denied, ec);
-         !ec && it != fs::directory_iterator(); it.increment(ec)) {
 
-        const auto& e = *it;
-        const std::string name = e.path().filename().string();
-        if (name.empty() || name[0] < '0' || name[0] > '9') continue;
-
-        std::ifstream in(e.path() / "cmdline", std::ios::binary);
-        if (!in) continue;
-
-        std::string cmd0;
-        std::getline(in, cmd0, '\0');
-        if (cmd0.empty()) continue;
-
-        if (cmd0 == pkg) return true;
-        if (cmd0.rfind(pkg, 0) == 0 && cmd0.size() > pkg.size() && cmd0[pkg.size()] == ':') return true;
-    }
-    return false;
-}
-
-bool write_text_file(const std::string& path, const std::string& value) {
+static bool write_text_file(const std::string& path, const std::string& value) {
     std::ofstream ofs(path);
     if (!ofs.is_open()) {
         printf("open failed: %s\n", path.c_str());
@@ -73,11 +46,44 @@ bool write_text_file(const std::string& path, const std::string& value) {
     return ofs.good();
 }
 
-// 删除文件或目录（等价于：rm -rf path）
-void remove_force(const std::string& path) {
+static bool read_text_file(const char* path, std::string& out) {
+    out.clear();
+    if (path == nullptr || *path == '\0') return false;
+    std::ifstream in(path, std::ios::in | std::ios::binary);
+    if (!in) return false;
+    out.assign((std::istreambuf_iterator<char>(in)),
+               std::istreambuf_iterator<char>());
+    return in.good() || in.eof();
+}
+
+static bool file_exists(const std::filesystem::path& p) {
     std::error_code ec;
-    fs::remove_all(path, ec);  // 不抛异常，简单稳一点
-    if (ec) {
-        printf("remove failed: %s , %s\n", path.c_str(), ec.message().c_str());
+    return std::filesystem::exists(p, ec);
+}
+
+static bool delete_path(const std::filesystem::path& dir_path) {
+    std::error_code ec;
+    std::filesystem::remove_all(dir_path, ec);
+    return !file_exists(dir_path);
+}
+
+static void clear_directory_contents(const std::string& path) {
+    std::error_code ec;
+    
+    // 检查路径是否存在且为目录
+    if (fs::exists(path, ec) && fs::is_directory(path, ec)) {
+        // 遍历目录内的所有子项目
+        for (const auto& entry : fs::directory_iterator(path, ec)) {
+            std::error_code temp_ec;
+            // 对内部的每个子项执行 remove_all
+            fs::remove_all(entry.path(), temp_ec);
+            if (temp_ec) {
+                printf("clear failed at %s : %s\n", entry.path().c_str(), temp_ec.message().c_str());
+            }
+        }
+    } else {
+        if (ec) {
+            printf("access failed: %s , %s\n", path.c_str(), ec.message().c_str());
+        }
     }
 }

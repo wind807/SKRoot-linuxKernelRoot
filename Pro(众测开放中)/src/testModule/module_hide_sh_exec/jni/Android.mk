@@ -3,7 +3,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE := module_hide_sh_exec
 
-LOCAL_SRC_FILES := ../module_hide_sh_exec.cpp ../su_interactive.cpp ../idle_killer.cpp
+LOCAL_SRC_FILES := ../module_hide_sh_exec.cpp ../su_interactive.cpp ../idle_killer.cpp ../cJSON.cpp
 
 KERNEL_MODULE_KIT := $(LOCAL_PATH)/../../kernel_module_kit
 LOCAL_C_INCLUDES  += $(KERNEL_MODULE_KIT)/include

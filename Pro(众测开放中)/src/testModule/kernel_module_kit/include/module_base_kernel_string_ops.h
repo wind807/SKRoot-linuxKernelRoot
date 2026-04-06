@@ -100,6 +100,8 @@ void kmemcpy(Assembler* a, GpX dst, GpX src, uint64_t n);
 /* memmem：在 buf 的前 n 字节中查找子串 needle（长度 needle_n）；若找到则 X0 为匹配位置指针，否则为0 （与 GNU memmem 一致）*/
 void kmemmem(Assembler* a, GpX buf, GpX n, GpX needle, GpX needle_n);
 void kmemmem(Assembler* a, GpX buf, GpX n, GpX needle, uint64_t needle_n);
+void kmemmem(Assembler* a, GpX buf, uint64_t n, GpX needle, GpX needle_n);
+void kmemmem(Assembler* a, GpX buf, uint64_t n, GpX needle, uint64_t needle_n);
 
 /* memchr：在前 n 字节内查找字节值 c；若找到则 X0 为匹配位置指针，否则为0 （与标准 memchr 一致）*/
 void kmemchr(Assembler* a, GpX buf, GpW c/*低8位生效*/, GpX n);

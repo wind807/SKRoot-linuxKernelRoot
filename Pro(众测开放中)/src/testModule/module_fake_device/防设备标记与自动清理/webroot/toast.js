@@ -2,7 +2,7 @@
 /** ===== Toast ===== */
 let toastTimer = null;
 let toastSeq = 0;
-function showToast(msg, kind = "success", durationMs = 1800) {
+function showToast(msg, kind = "success", durationMs = 2500) {
   toastSeq++;
   const mySeq = toastSeq;
 

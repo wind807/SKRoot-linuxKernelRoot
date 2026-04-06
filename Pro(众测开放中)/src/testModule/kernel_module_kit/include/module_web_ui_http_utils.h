@@ -4,7 +4,7 @@
 #include <cctype>
 #include <cstring>
 #include <cstdlib>
-#include "civetweb-1.16/include/CivetServer.h"
+#include "third_party/civetweb-1.16/include/CivetServer.h"
 
 namespace kernel_module {
 namespace webui {

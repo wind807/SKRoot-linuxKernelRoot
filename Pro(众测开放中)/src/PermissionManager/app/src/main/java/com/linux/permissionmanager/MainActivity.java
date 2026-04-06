@@ -2,20 +2,16 @@ package com.linux.permissionmanager;
 
 import static com.linux.permissionmanager.AppSettings.HOTLOAD_SHELL_PATH;
 import static com.linux.permissionmanager.AppSettings.KEY_IS_HOTLOAD_MODE;
-import static com.linux.permissionmanager.AppSettings.SHELL_SOCKET_NAME;
 import static com.linux.permissionmanager.helper.MagicaRootHelper.executeMagicaRootScript;
 
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.net.LocalServerSocket;
-import android.net.LocalSocket;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -35,19 +31,11 @@ import com.linux.permissionmanager.fragment.SuAuthFragment;
 import com.linux.permissionmanager.fragment.HomeFragment;
 import com.linux.permissionmanager.fragment.SettingsFragment;
 import com.linux.permissionmanager.fragment.SkrModFragment;
-import com.linux.permissionmanager.helper.MagicaRootHelper;
-import com.linux.permissionmanager.helper.MagicaService;
 import com.linux.permissionmanager.utils.DialogUtils;
 import com.linux.permissionmanager.utils.FileUtils;
 import com.linux.permissionmanager.utils.GetAppListPermissionHelper;
 import com.linux.permissionmanager.utils.GetSdcardPermissionsHelper;
 import com.linux.permissionmanager.utils.ShellUtils;
-
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.concurrent.CountDownLatch;
 
 public class MainActivity extends AppCompatActivity {
     private String mRootKey = "";

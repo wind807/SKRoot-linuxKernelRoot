@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <string>
 #include <cstdint>
-#include "civetweb-1.16/include/CivetServer.h"
+#include "third_party/civetweb-1.16/include/CivetServer.h"
 #include "module_web_ui_http_utils.h"
 
 namespace kernel_module {

@@ -64,7 +64,7 @@ async function syncTargets() {
     const json = JSON.stringify(pkgs);
     await RequestApi.setTargetPkgJson(json);
     els.barSub.textContent = `条数：${pkgs.length}`;
-    showToast("重启后生效", "success");
+    showToast("立即生效", "success");
   } catch (e) {
     els.barSub.textContent = `条数：${pkgs.length}（同步失败）`;
     showToast("同步失败", "danger");

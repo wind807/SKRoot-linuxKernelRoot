@@ -30,6 +30,13 @@ KModErr get_inode_i_mapping_offset(uint32_t & offset);
 KModErr get_inode_i_ino_offset(uint32_t & offset);
 
 /***************************************************************************
+* 获取 inode 结构体中 i_rdev 字段的偏移量
+* 参数: offset      输出参数，返回 i_rdev 字段相对于 inode 起始的偏移量（字节）
+* 返回: OK 表示成功；其它值为错误码
+***************************************************************************/
+KModErr get_inode_i_rdev_offset(uint32_t & offset);
+
+/***************************************************************************
 * 获取 inode 结构体中 i_size 字段的偏移量
 * 参数: offset      输出参数，返回 i_size 字段相对于 inode 起始的偏移量（字节）
 * 返回: OK 表示成功；其它值为错误码
@@ -72,5 +79,16 @@ KModErr get_inode_i_rwsem_offset(uint32_t & offset);
 * 返回: OK 表示成功；其它值为错误码
 ***************************************************************************/
 KModErr get_inode_i_mutex_offset(uint32_t & offset);
+
+/***************************************************************************
+* 获取 inode 结构体中 i_pipe\i_bdev\i_cdev\i_link\i_dir_seq 字段的偏移量（限 Linux < 4.7.0）
+* 参数: offset      输出参数，返回 i_mutex 字段相对于 inode 起始的偏移量（字节）
+* 返回: OK 表示成功；其它值为错误码
+***************************************************************************/
+KModErr get_inode_i_pipe_offset(uint32_t & offset);
+KModErr get_inode_i_bdev_offset(uint32_t & offset);
+KModErr get_inode_i_cdev_offset(uint32_t & offset);
+KModErr get_inode_i_link_offset(uint32_t & offset);
+KModErr get_inode_i_dir_seq_offset(uint32_t & offset);
 
 }

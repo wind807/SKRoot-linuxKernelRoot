@@ -7,8 +7,8 @@
 #include <memory>
 
 #define ASMJIT_STATIC
-#include "asmjit2/core.h"
-#include "asmjit2/a64.h"
+#include "third_party/asmjit2/core.h"
+#include "third_party/asmjit2/a64.h"
 namespace {
 using namespace asmjit;
 using namespace asmjit::a64;

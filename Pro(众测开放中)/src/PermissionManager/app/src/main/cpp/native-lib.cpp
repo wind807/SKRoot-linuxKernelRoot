@@ -441,3 +441,16 @@ Java_com_linux_permissionmanager_bridge_NativeBridge_readSkrootLog(
     if(is_failed(err)) log = to_string(err);
     return env->NewStringUTF(log.c_str());
 }
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_linux_permissionmanager_bridge_NativeBridge_clearSkrootLog(
+        JNIEnv* env,
+        jclass /* this */,
+        jstring rootKey) {
+    string strRootKey = jstringToStr(env, rootKey);
+
+    KModErr err = clear_skroot_log(strRootKey.c_str());
+    stringstream sstr;
+    sstr << "clear_skroot_log: " << to_string(err).c_str();
+    return env->NewStringUTF(sstr.str().c_str());
+}

@@ -1,149 +1,97 @@
-﻿(() => {
-  // ====== UI refs ======
+(() => {
   const out = document.getElementById("out");
   const cmd = document.getElementById("cmd");
   const sendBtn = document.getElementById("sendBtn");
   const connDot = document.getElementById("connDot");
   const connText = document.getElementById("connText");
+  const quickActions = document.getElementById("quickActions");
+  const fileBtn = document.getElementById("fileBtn");
+  const autoBtn = document.getElementById("autoBtn");
+  const sheetOverlay = document.getElementById("sheetOverlay");
 
-  // ====== state ======
-  let failCount = 0;
+  const terminalCore = window.SKTerminalCore?.createTerminalCore({
+    out,
+    connDot,
+    connText,
+  });
 
-  // ====== stream state ======
-  let pending = "";
-  let partialRow = null;
-
-  function scrollBottom() {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        out.scrollTop = out.scrollHeight;
-      });
-    });
+  if (!terminalCore) {
+    console.error("SKTerminalCore not loaded");
+    return;
   }
 
-  function appendLine(text){
-    const row = document.createElement("div");
-    row.className = "line";
-
-    const txt = document.createElement("div");
-    txt.className = "txt";
-    txt.textContent = text;
-
-    row.appendChild(txt);
-    out.appendChild(row);
-
-    scrollBottom();
+  async function refreshHistory() {
+    let history = await RequestApi.getQuickActions();
+    if (!history || !Array.isArray(history) || history.length === 0) history = [];
+    quickActions.innerHTML = history.reverse().map(cmdStr => {
+      const displayStr = cmdStr.length > 17 ? cmdStr.substring(0, 17) + '...' : cmdStr;
+      return `<div class="action-chip" data-cmd="${cmdStr}" title="${cmdStr}">${displayStr}</div>`;
+    }).join('');
   }
 
-  function ensurePartialRow(){
-    if (partialRow) return partialRow;
-
-    const row = document.createElement("div");
-    row.className = "line";
-    const txt = document.createElement("div");
-    txt.className = "txt";
-    row.appendChild(txt);
-    out.appendChild(row);
-    partialRow = row;
-
-    scrollBottom();
-    return partialRow;
-  }
-
-  function setPartialText(text){
-    if (!text) {
-      if (partialRow) {
-        partialRow.remove();
-        partialRow = null;
-      }
-      scrollBottom();
-      return;
-    }
-    const row = ensurePartialRow();
-    row.firstChild.textContent = text;
-    scrollBottom();
-  }
-
-  function consumeChunk(chunk){
-    if (!chunk) return;
-
-    pending += chunk;
-    const parts = pending.split("\n");
-    pending = parts.pop();
-    for (const line of parts) appendLine(line);
-    setPartialText(pending);
-  }
-
-  function setConn(ok, text){
-    connDot.classList.remove("ok", "bad", "connecting");
-    if (ok === true) connDot.classList.add("ok");
-    else if (ok === false) connDot.classList.add("bad");
-    else connDot.classList.add("connecting");
-    connText.textContent = text;
-  }
-
-  async function sendCommand(){
+  async function sendCommand() {
     const v = (cmd.value || "").trim();
     if (!v) return;
-
-    appendLine("# " + v);
-
+    terminalCore.appendLine("# " + v, true);
     cmd.value = "";
     cmd.focus();
-
     sendBtn.disabled = true;
     try {
       await RequestApi.sendCommand(v);
-    } catch(e) {
-      appendLine("ERR: 发送失败 - " + (e && e.message ? e.message : String(e)));
+      setTimeout(refreshHistory, 300);
+    } catch (e) {
+      terminalCore.appendLine("ERR: 发送失败 - " + (e && e.message ? e.message : String(e)));
     } finally {
       sendBtn.disabled = false;
-      scrollBottom();
+      terminalCore.scrollBottom();
     }
   }
 
-	async function pollLogsOnce(){
-	  const chunk = await RequestApi.getNewOutput();
-	  if (chunk && chunk.length > 0) {
-		consumeChunk(chunk);
-		return true;
-	  }
-	  return false;
-	}
+  const app = {
+    elements: {
+      out,
+      cmd,
+      sendBtn,
+      connDot,
+      connText,
+      quickActions,
+      fileBtn,
+      autoBtn,
+      sheetOverlay,
+    },
+    refreshHistory,
+    sendCommand,
+    appendLine: terminalCore.appendLine,
+    setConn: terminalCore.setConn,
+    scrollBottom: terminalCore.scrollBottom,
+    highlightText: terminalCore.highlightText,
+    consumeChunk: terminalCore.consumeChunk,
+    closeAllSheets: null,
+    openAutoSheet: null,
+  };
 
-	async function tick(){
-	  try{
-      await pollLogsOnce();
-      failCount = 0;
-      setConn(true, "在线");
-	  } catch(e){
-      failCount++;
-      if (failCount >= 2) setConn(false, "异常");
-      else setConn(null, "连接中");
-	  }
-	}
+  window.SKRootApp = app;
 
+  quickActions.addEventListener("click", (e) => {
+    const chip = e.target.closest(".action-chip");
+    if (chip && chip.dataset.cmd) {
+      cmd.value = chip.dataset.cmd;
+      cmd.focus();
+    }
+  });
 
-  // ====== events ======
   cmd.addEventListener("keydown", (ev) => {
     if (ev.key === "Enter") {
       ev.preventDefault();
       sendCommand();
     }
   });
+
   sendBtn.addEventListener("click", sendCommand);
 
-  if (window.visualViewport) {
-    const vv = window.visualViewport;
-    const onVV = () => scrollBottom();
-    vv.addEventListener("resize", onVV);
-    vv.addEventListener("scroll", onVV);
-  }
-  // ====== init ======
-  appendLine("#");
-  setConn(null, "连接中");
+  terminalCore.appendLine("#", true);
+  terminalCore.setConn(null, "连接中");
+  refreshHistory();
   cmd.focus();
-  tick();
-  setInterval(tick, 1000);
-
+  setInterval(terminalCore.tick, 1000);
 })();

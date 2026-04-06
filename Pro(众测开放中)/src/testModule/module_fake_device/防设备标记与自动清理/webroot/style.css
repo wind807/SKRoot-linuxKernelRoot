@@ -58,6 +58,27 @@ body{
   box-shadow: 0 0 0 3px rgba(52, 199, 89, .16);
 }
 
+.warn-box {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fffaf5;
+  border: 1px solid #f3e8dc;
+}
+
+.warn-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a5b2a;
+  margin-bottom: 2px;
+}
+
+.warn-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8b6b4c;
+}
+
 .sticky{
   position: sticky;
   top: 10px;
@@ -220,15 +241,15 @@ button.solid:disabled{
   box-shadow: var(--shadow);
   overflow:hidden;
 
-  height: 76vh;
+  height: 94vh;
   min-height: 520px;
-  max-height: 78vh;
+  max-height: 94vh;
 
   display:flex;
   flex-direction:column;
 }
 @media (max-height: 700px){
-  .modal{ min-height: 0; height: 82vh; }
+  .modal{ min-height: 0; height: 94vh; }
 }
 
 .modal-hd{

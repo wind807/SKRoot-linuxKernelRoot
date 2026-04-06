@@ -1,0 +1,161 @@
+(() => {
+  function createTerminalCore(elements) {
+    const { out, connDot, connText } = elements;
+
+    let failCount = 0;
+    let pending = "";
+    let partialRow = null;
+
+    function highlightText(text, isCmd = false) {
+      if (!text) return "";
+      let html = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      if (isCmd) return `<span class="hl-cmd">${html}</span>`;
+      if (/(成功|OK|DONE)/.test(html)) return `<span class="hl-root">${html}</span>`;
+      const errPattern = /(发送失败|ERR:|FAILED|Error|error|失败|HTTP [45]\d{2})/g;
+      return html.replace(errPattern, (match) => `<span class="hl-err">${match}</span>`);
+    }
+
+    function scrollBottom() {
+      requestAnimationFrame(() => {
+        out.scrollTop = out.scrollHeight;
+      });
+    }
+
+    function appendLine(text, isCmd = false) {
+      const row = document.createElement("div");
+      row.className = "line";
+      const txt = document.createElement("div");
+      txt.className = "txt";
+      txt.innerHTML = highlightText(text, isCmd);
+      row.appendChild(txt);
+      out.appendChild(row);
+      scrollBottom();
+    }
+
+    function setPartialText(text) {
+      if (!text) {
+        if (partialRow) {
+          partialRow.remove();
+          partialRow = null;
+        }
+        return;
+      }
+      if (!partialRow) {
+        partialRow = document.createElement("div");
+        partialRow.className = "line";
+        partialRow.innerHTML = '<div class="txt"></div>';
+        out.appendChild(partialRow);
+      }
+      partialRow.firstChild.innerHTML = highlightText(text);
+      scrollBottom();
+    }
+
+    function consumeChunk(chunk) {
+      if (!chunk) return;
+      pending += chunk;
+      const parts = pending.split("\n");
+      pending = parts.pop();
+      for (const line of parts) appendLine(line);
+      setPartialText(pending);
+    }
+
+    function setConn(ok, text) {
+      connDot.classList.remove("ok", "bad", "connecting");
+      if (ok === true) connDot.classList.add("ok");
+      else if (ok === false) connDot.classList.add("bad");
+      else connDot.classList.add("connecting");
+      connText.textContent = text;
+    }
+
+    async function tick() {
+      try {
+        const chunk = await RequestApi.getNewOutput();
+        if (chunk) consumeChunk(chunk);
+        failCount = 0;
+        setConn(true, "在线");
+      } catch (e) {
+        failCount++;
+        if (failCount >= 2) setConn(false, "异常");
+        else setConn(null, "连接中");
+      }
+    }
+
+    return {
+      highlightText,
+      scrollBottom,
+      appendLine,
+      consumeChunk,
+      setConn,
+      tick,
+    };
+  }
+
+  function shellQuote(s) {
+    s = String(s ?? "");
+    return "'" + s.replace(/'/g, `'\\''`) + "'";
+  }
+
+  function splitShellArgs(input) {
+    input = String(input ?? "").trim();
+    if (!input) return [];
+    const args = [];
+    let cur = "";
+    let quote = null; // "'" or '"'
+    let escape = false;
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (escape) {
+        cur += ch;
+        escape = false;
+        continue;
+      }
+      if (quote === '"') {
+        if (ch === "\\") escape = true;
+        else if (ch === '"') quote = null;
+        else cur += ch;
+        continue;
+      }
+      if (quote === "'") {
+        if (ch === "'") quote = null;
+        else cur += ch;
+        continue;
+      }
+      // 不在引号内
+      if (/\s/.test(ch)) {
+        if (cur) { args.push(cur); cur = ""; }
+        continue;
+      }
+      if (ch === '"' || ch === "'") { quote = ch; continue; }
+      if (ch === "\\") { escape = true; continue; }
+      cur += ch;
+    }
+    if (escape) cur += "\\";
+    if (quote) throw new Error("参数引号未闭合");
+    if (cur) args.push(cur);
+    return args;
+  }
+
+  function splitPathToDirAndBase(filePath) {
+    const p = String(filePath ?? "");
+    const idx = p.lastIndexOf("/");
+    if (idx < 0) return { dir: ".", base: p };
+    if (idx === 0) return { dir: "/", base: p.slice(1) };
+    return { dir: p.slice(0, idx), base: p.slice(idx + 1),};
+  }
+
+  function buildShCommand(filePath, rawArgs) {
+    const { dir, base } = splitPathToDirAndBase(filePath);
+    const argv = splitShellArgs(rawArgs).map(shellQuote);
+    const cmd = ["(cd", shellQuote(dir), "&&", "sh", shellQuote("./" + base), ...argv,].join(" ");
+    return cmd + ")";
+  }
+
+  window.SKTerminalCore = {
+    createTerminalCore,
+    shellQuote,
+    buildShCommand,
+  };
+})();

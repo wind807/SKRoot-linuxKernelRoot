@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "____DO_NOT_EDIT____/private_desc_parser.h"
+#include "third_party/____DO_NOT_EDIT____/private_desc_parser.h"
 #include "module_web_ui_http_handler.h"
 #include "module_base_install_callback.h"
 

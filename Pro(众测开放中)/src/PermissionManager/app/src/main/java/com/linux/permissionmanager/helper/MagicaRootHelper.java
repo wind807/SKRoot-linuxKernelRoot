@@ -1,129 +1,186 @@
 package com.linux.permissionmanager.helper;
 
-import static com.linux.permissionmanager.AppSettings.SHELL_SOCKET_NAME;
-
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.net.LocalServerSocket;
-import android.net.LocalSocket;
-import android.os.Bundle;
-import android.os.Handler;
+import android.content.ServiceConnection;
+import android.os.Build;
+import android.os.IBinder;
 import android.os.Looper;
-import android.os.ResultReceiver;
+import android.os.RemoteException;
+import android.text.TextUtils;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import androidx.annotation.RequiresApi;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.concurrent.CountDownLatch;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class MagicaRootHelper {
-
     public interface ResultCallback {
         void onResult(String result);
     }
-
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     public static void executeMagicaRootScript(Context context, String script, ResultCallback callback) {
-        executeMagicaRootScript(context, script, 10000, callback);
-    }
-
-    public static void executeMagicaRootScript(Context context, String script, long acceptTimeoutMs, ResultCallback callback) {
-        CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean finished = new AtomicBoolean(false);
-        AtomicBoolean accepted = new AtomicBoolean(false);
-        AtomicReference<LocalServerSocket> serverRef = new AtomicReference<>(null);
+        ServiceConnection connection = new ServiceConnection() {
+            private IRemoteService remoteService;
 
-        new Thread(() -> {
-            try (LocalServerSocket server = new LocalServerSocket(SHELL_SOCKET_NAME)) {
-                serverRef.set(server);
-                latch.countDown();
-
-                // 超时线程
-                Thread timeoutThread = new Thread(() -> {
-                    try {
-                        Thread.sleep(acceptTimeoutMs);
-                        if (!accepted.get() && finished.compareAndSet(false, true)) {
-                            closeServerQuietly(serverRef.get());
-                            callback.onResult("ERROR: accept timeout");
-                        }
-                    } catch (InterruptedException ignored) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
-                timeoutThread.start();
-
-                try (LocalSocket client = server.accept();
-                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(client.getOutputStream()));
-                     BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
-                    accepted.set(true);
-                    writer.write(script);
-                    writer.write("\n#__END__\n");
-                    writer.flush();
-                    StringBuilder result = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if ("#__END__".equals(line)) break;
-                        result.append(line).append('\n');
-                    }
-                    if (finished.compareAndSet(false, true)) {
-                        callback.onResult(result.toString());
-                    }
-                }
-
-            } catch (Throwable t) {
-                t.printStackTrace();
-                latch.countDown();
-                if (finished.compareAndSet(false, true)) {
-                    callback.onResult("ERROR: Socket server error - " + t.getMessage());
-                }
-            }
-        }).start();
-
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            if (finished.compareAndSet(false, true)) {
-                callback.onResult("ERROR: interrupted");
-            }
-            return;
-        }
-
-        // 创建 ResultReceiver 接收 Service 内部状态
-        ResultReceiver receiver = new ResultReceiver(new Handler(Looper.getMainLooper())) {
             @Override
-            protected void onReceiveResult(int resultCode, Bundle resultData) {
-                // -1 代表 Service 内部发生了异常
-                if (resultCode == -1 && finished.compareAndSet(false, true)) {
-                    String errorMsg = resultData != null ? resultData.getString("error") : "Unknown Service Error";
-                    closeServerQuietly(serverRef.get());
-                    callback.onResult("ERROR: Service internal failure - " + errorMsg);
-                }
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                remoteService = IRemoteService.Stub.asInterface(service);
+                new Thread(() -> {
+                    IRemoteProcess remoteProcess = null;
+                    try {
+                        remoteProcess = remoteService.getRemoteProcess();
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                    if (remoteProcess == null) {
+                        postResultOnce(context, finished, callback, "ERROR: remote process is null");
+                        safeUnbind(context, this);
+                        return;
+                    }
+                    final RemoteProcess process = new RemoteProcess(remoteProcess);
+                    ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
+                    ByteArrayOutputStream stderrBuffer = new ByteArrayOutputStream();
+
+                    Thread outThread = new Thread(() -> copyStream(process.getInputStream(), stdoutBuffer), "Magica-stdout");
+                    Thread errThread = new Thread(() -> copyStream(process.getErrorStream(), stderrBuffer), "Magica-stderr");
+                    try {
+                        outThread.start();
+                        errThread.start();
+                        OutputStream stdin = process.getOutputStream();
+                        writeStringChunked(stdin, script, 4096);
+                        stdin.flush();
+                        stdin.close();
+
+                        int exitCode = process.waitFor();
+
+                        outThread.join();
+                        errThread.join();
+
+                        String stdout = stdoutBuffer.toString(StandardCharsets.UTF_8.name());
+                        String stderr = stderrBuffer.toString(StandardCharsets.UTF_8.name());
+
+                        StringBuilder result = new StringBuilder();
+                        result.append(stdout);
+
+                        if (!stderr.isEmpty()) {
+                            if (result.length() > 0 && result.charAt(result.length() - 1) != '\n') {
+                                result.append('\n');
+                            }
+                            result.append("[stderr]\n").append(stderr);
+                        }
+
+                        if (result.length() > 0 && result.charAt(result.length() - 1) != '\n') {
+                            result.append('\n');
+                        }
+                        result.append("[exitCode] ").append(exitCode).append('\n');
+
+                        postResultOnce(context, finished, callback, result.toString());
+                    } catch (Throwable t) {
+                        try {
+                            process.destroy();
+                        } catch (Throwable ignore) {}
+                        try {
+                            outThread.join(300);
+                            errThread.join(300);
+                        } catch (InterruptedException ignored) {
+                            Thread.currentThread().interrupt();
+                        }
+
+                        String stdout = null;
+                        String stderr = null;
+                        try {
+                            stdout = stdoutBuffer.toString(StandardCharsets.UTF_8.name());
+                            stderr = stderrBuffer.toString(StandardCharsets.UTF_8.name());
+                        } catch (UnsupportedEncodingException e) {
+                            e.printStackTrace();
+                        }
+                        StringBuilder msg = new StringBuilder();
+                        msg.append("ERROR: ").append(t.getMessage()).append('\n');
+
+                        if (!TextUtils.isEmpty(stdout)) {
+                            msg.append("[stdout]\n").append(stdout);
+                            if (stdout.charAt(stdout.length() - 1) != '\n') msg.append('\n');
+                        }
+
+                        if (!TextUtils.isEmpty(stderr)) {
+                            msg.append("[stderr]\n").append(stderr);
+                            if (stderr.charAt(stderr.length() - 1) != '\n') msg.append('\n');
+                        }
+
+                        postResultOnce(context, finished, callback, msg.toString());
+                    } finally {
+                        try {
+                            if (process != null) process.destroy();
+                        } catch (Throwable ignore) {}
+                        safeUnbind(context, this);
+                    }
+                }, "Magica-Exec").start();
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                postResultOnce(context, finished, callback, "ERROR: service disconnected");
             }
         };
 
-        Intent intent = new Intent(context, MagicaService.class);
-        intent.putExtra("receiver", receiver);
-
         try {
-            // 捕获系统拦截 (例如 IllegalStateException: Not allowed to start service)
-            context.startService(intent);
-        } catch (Exception e) {
-            if (finished.compareAndSet(false, true)) {
-                closeServerQuietly(serverRef.get());
-                callback.onResult("ERROR: System intercepted startService - " + e.getMessage());
-            }
+            Intent intent = new Intent(context, MagicaService.class);
+            Executor executor = context.getMainExecutor();
+            boolean ok = context.bindIsolatedService(intent, Context.BIND_AUTO_CREATE, "magica", executor, connection);
+            if (!ok) postResultOnce(context, finished, callback, "ERROR: bindIsolatedService returned false");
+        } catch (Throwable t) {
+            postResultOnce(context, finished, callback, "ERROR: bindIsolatedService failed - " + t.getMessage());
         }
     }
 
-    private static void closeServerQuietly(LocalServerSocket server) {
-        if (server != null) {
+    private static void writeStringChunked(OutputStream os, String text, int chunkSize) throws IOException {
+        if (os == null) throw new IllegalArgumentException("OutputStream == null");
+        if (text == null) text = "";
+        if (chunkSize <= 0) throw new IllegalArgumentException("chunkSize must > 0");
+        byte[] data = text.getBytes(StandardCharsets.UTF_8);
+        int offset = 0;
+        while (offset < data.length) {
+            int len = Math.min(chunkSize, data.length - offset);
+            os.write(data, offset, len);
+            offset += len;
+        }
+    }
+    private static void copyStream(InputStream in, ByteArrayOutputStream out) {
+        byte[] buf = new byte[8192];
+        int len;
+        try {
+            while ((len = in.read(buf)) != -1) {
+                out.write(buf, 0, len);
+            }
+        } catch (IOException ignored) {
+        } finally {
             try {
-                server.close();
+                in.close();
             } catch (IOException ignored) {}
+        }
+    }
+
+    private static void safeUnbind(Context context, ServiceConnection conn) {
+        try {
+            context.unbindService(conn);
+        } catch (Throwable ignore) {}
+    }
+
+    private static void postResultOnce(Context context, AtomicBoolean finished, ResultCallback callback, String result) {
+        if (!finished.compareAndSet(false, true)) return;
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            callback.onResult(result);
+        } else {
+            context.getMainExecutor().execute(() -> callback.onResult(result));
         }
     }
 }

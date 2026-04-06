@@ -1,10 +1,19 @@
 ﻿#include <set>
 #include <unordered_map>
+#include <signal.h>
 
 #include "main.h"
 #include "cJSON.h"
 #include "android_packages_list_utils.h"
+#include "boot_session_utils.h"
 #include "persist_data_perm_helper.h"
+#include "pkg_process_helper.h"
+
+static inline constexpr const char* kPrivateDirName = "empty_dir";
+
+static fs::path g_empty_dir;
+static bool g_need_reload = false;
+
 
 // 把 ["aa","bb","cc"] 解析成 std::set<std::string>
 static std::set<std::string> parse_json(const std::string& json) {
@@ -131,43 +140,57 @@ static void cleanup() {
     // rm -rf /data/tombstones/*
     // rm -rf /data/misc/logd/*
     // rm -rf /data/misc/update_engine/log/*
-    remove_force("/data/system/dropbox");
-    remove_force("/data/system/usagestats");
-    remove_force("/data/system/appops.xml");
-    remove_force("/data/system/ifw");
-    remove_force("/data/system/ndebugsocket");
-    remove_force("/data/anr");
-    remove_force("/data/tombstones");
-    remove_force("/data/misc/logd");
-    remove_force("/data/misc/update_engine/log");
+    clear_directory_contents("/data/system/dropbox");
+    clear_directory_contents("/data/system/usagestats");
+    delete_path("/data/system/appops.xml");
+    clear_directory_contents("/data/system/ifw");
+    clear_directory_contents("/data/system/ndebugsocket");
+    clear_directory_contents("/data/anr");
+    clear_directory_contents("/data/tombstones");
+    clear_directory_contents("/data/misc/logd");
+    clear_directory_contents("/data/misc/update_engine/log");
+}
+
+static bool set_persist_data_locked_once(bool should_lock) {
+    static bool s_locked = false;
+    if (should_lock) {
+        if (s_locked) return true;
+        if (!persist_data_lock(g_empty_dir)) return false;
+        cleanup();
+        s_locked = true;
+        return true;
+    }
+
+    if (!s_locked) return true;
+    if (!persist_data_unlock(g_empty_dir)) return false;
+    cleanup();
+    s_locked = false;
+    return true;
 }
 
 static void monitor_pkgs_loop(const std::set<std::string>& pkgs) {
     using namespace std::chrono_literals;
-    std::unordered_map<std::string, bool> last; // pkg -> last running
-    last.reserve(pkgs.size() * 2);
-    bool last_any_running = false;
+    static std::map<std::string, bool> s_pkg_remove_armed;
     for (;;) {
         bool any_running = false;
         for (const auto& pkg : pkgs) {
-            bool cur = is_pkg_running(pkg);
-            bool prev = last[pkg];       // 不存在时默认 false，并插入
-            last[pkg] = cur;
-            if (cur) any_running = true;
-            // 进程“消失”就清理一次
-            if (prev && !cur) {
+            const bool running = is_pkg_running(pkg, 600 * 1024); // 忽略600MB以下的
+            if (running) {
+                any_running = true;
+                if(!s_pkg_remove_armed[pkg]) printf("detect running:%s\n", pkg.c_str());
+                s_pkg_remove_armed[pkg] = true;
+                continue;
+            }
+            bool& remove_armed = s_pkg_remove_armed[pkg];
+            if (remove_armed) {
+                printf("detect close:%s\n", pkg.c_str());
                 remove_ano_tmp_for_pkg(pkg);
-                cleanup();
+                remove_armed = false;
             }
         }
-        // 任意一个启动：只触发一次 lockdown
-        if (!last_any_running && any_running) persist_data_on_install_lockdown_permissions();
-
-        // 最后一个关闭：只触发一次 restore
-        if (last_any_running && !any_running) persist_data_on_uninstall_restore_permissions();
-
-        last_any_running = any_running;
-        std::this_thread::sleep_for(5s);
+        set_persist_data_locked_once(any_running && !g_need_reload);
+        if(g_need_reload) break;
+        std::this_thread::sleep_for(3s);
     }
 }
 
@@ -176,37 +199,53 @@ static void daemon_loop() {
     kernel_module::read_string_disk_storage("target_pkg_json", json);
     std::set<std::string> target_pkg_list = parse_json(json);
     printf("target pkg list (%zd total) :\n", target_pkg_list.size());
-    if(target_pkg_list.empty()) return;
+    
+    kernel_module::write_int32_disk_storage("pid", (int)getpid());
+    kernel_module::write_string_disk_storage("boot_session", boot_session_utils::read_boot_session().c_str());
 
     wait_decrypted_and_run([&target_pkg_list]{
         printf("data user decrypted!\n");
+        sleep(10);
+        kill_pkg_list_until_stopped(target_pkg_list);
         for (const auto& pkg : target_pkg_list) {
             printf("target pkg: %s\n", pkg.c_str());
             remove_ano_tmp_for_pkg(pkg);
-            cleanup();
         }
+        cleanup();
+        monitor_pkgs_loop(target_pkg_list);
     });
-    monitor_pkgs_loop(target_pkg_list);
+}
+
+static void on_sigusr1(int signo) {
+    (void)signo;
+    printf("recv signUser1: reload pkgs\n");
+    g_need_reload = true;
+}
+
+static void register_sigusr1() {
+    struct sigaction sa = {};
+    sa.sa_handler = on_sigusr1;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGUSR1, &sa, nullptr);
 }
 
 // SKRoot模块入口函数
 int skroot_module_main(const char* root_key, const char* module_private_dir) {
-    printf("start modify system prop\n");
-    persist_data_on_uninstall_restore_permissions();
+    g_empty_dir = fs::path(module_private_dir) / kPrivateDirName;
+    persist_data_unlock(g_empty_dir);
     spawn_delayed_task(5, [=] {
+        register_sigusr1();
+        persist_data_unlock(g_empty_dir);
         daemon_loop();
+        while(g_need_reload) { g_need_reload = false; daemon_loop(); }
     });
     return 0;
 }
 
-std::string module_on_install(const char* root_key, const char* module_private_dir) {
-    if(!persist_data_on_install_backup_permissions()) return "init backup perm failed";
-    android_open_url("tg://resolve?domain=Cycle1337");
-    return "";
-}
-
 void module_on_uninstall(const char* root_key, const char* module_private_dir) {
-    persist_data_on_uninstall_restore_permissions();
+    g_empty_dir = fs::path(module_private_dir) / kPrivateDirName;
+    persist_data_unlock(g_empty_dir);
 }
 
 static std::set<std::string> get_app_list() {
@@ -224,33 +263,39 @@ static std::set<std::string> get_app_list() {
 // WebUI HTTP服务器回调函数
 class MyWebHttpHandler : public kernel_module::WebUIHttpHandler { // HTTP服务器基于civetweb库
 public:
-    void onPrepareCreate(const char* root_key, const char* module_private_dir, uint32_t port) override {
-        m_root_key = root_key;
-    }
-
-    // 这里的Web服务器仅起到读取、保存配置文件的作用。
     bool handlePost(CivetServer* server, struct mg_connection* conn, const std::string& path, const std::string& body) override {
         printf("[module_hide_data_dir] POST request\nPath: %s\nBody: %s\n", path.c_str(), body.c_str());
 
         std::string resp;
         if(path == "/getCandidatesPkgJson") resp = json_array_from_set(get_app_list());
         else if(path == "/getTargetPkgJson") kernel_module::read_string_disk_storage("target_pkg_json", resp);
-        else if(path == "/setTargetPkgJson") resp = is_ok(kernel_module::write_string_disk_storage("target_pkg_json", body.c_str())) ? "OK" : "FAILED";
-        
+        else if(path == "/setTargetPkgJson") resp = onSetTargetPkgJson(body);
         kernel_module::webui::send_text(conn, 200, resp);
         return true;
     }
+
 private:
-    std::string m_root_key;
+    std::string onSetTargetPkgJson(const std::string& body) {
+        std::string resp = is_ok(kernel_module::write_string_disk_storage("target_pkg_json", body.c_str())) ? "OK" : "FAILED";
+        std::string boot_session;
+        kernel_module::read_string_disk_storage("boot_session", boot_session);
+        if(boot_session == boot_session_utils::read_boot_session()) {
+            int32_t pid = 0;
+            kernel_module::read_int32_disk_storage("pid", pid);
+            if(pid > 0 && is_pid_root(pid)) {
+                kill(pid, SIGUSR1);
+            }
+        }
+        return resp;
+    }
 };
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防设备标记&自动清理")
-SKROOT_MODULE_VERSION("4.0.0")
+SKROOT_MODULE_VERSION("4.0.1")
 SKROOT_MODULE_DESC("需要手动添加包名")
-SKROOT_MODULE_AUTHOR("Cycle1337 & 6飞起来6")
+SKROOT_MODULE_AUTHOR("SKRoot & Cycle1337 & 6飞起来6")
 SKROOT_MODULE_UUID32("Vk0EFJTuG2aBLQqc6WLHVPHnhfiZ8VKG")
-SKROOT_MODULE_ON_INSTALL(module_on_install)
 SKROOT_MODULE_ON_UNINSTALL(module_on_uninstall)
 SKROOT_MODULE_WEB_UI(MyWebHttpHandler)
 SKROOT_MODULE_UPDATE_JSON("https://abcz316.github.io/SKRoot-linuxKernelRoot/module_fake_device/cycle1337_bypass_device_flag_update.json")
