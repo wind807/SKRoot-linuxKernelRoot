@@ -5,11 +5,10 @@
 #define MIN(x, y)(x < y) ? (x) : (y)
 #endif // !MIN
 
+#define KSYM_NAME_LEN 128
 #define A64_NOP 0xD503201F
 #define MAX_FIND_RANGE 0x1000
 namespace {
-	const int KSYM_NAME_LEN = 128;
-
 	static inline bool looks_kernel_va(uint64_t v) {
 		static const uint64_t starts[] = {
 			0xFFFFFFC000000000ULL, // VA_BITS=39
@@ -182,15 +181,17 @@ bool KallsymsLookupName::find_kallsyms_names_list(int kallsyms_num, size_t kalls
 		name_list_start = x;
 		break;
 	}
+	if (name_list_start == 0) return false;
 	size_t off = name_list_start;
 	for (int i = 0; i < kallsyms_num; i++) {
+		if (off >= m_file_buf.size()) return false;
 		unsigned char ch = (unsigned char)m_file_buf[off++];
+		if (ch >= KSYM_NAME_LEN) return false;
 		off += ch;
 	}
 	name_list_end = off;
 	return true;
 }
-
 
 bool KallsymsLookupName::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end) {
 	size_t start = align_up<8>(name_list_end_offset);

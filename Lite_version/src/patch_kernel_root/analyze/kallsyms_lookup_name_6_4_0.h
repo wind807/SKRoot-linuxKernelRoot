@@ -21,9 +21,9 @@ private:
 	bool find_kallsyms_addresses_list(std::vector<std::pair<uint64_t, uint64_t>>& addresses);
 	bool find_kallsyms_offsets_list(size_t& start, size_t& end);
 	size_t find_kallsyms_relative_base_offset(size_t offset_list_end);
-	std::vector<size_t> find_maybe_kallsyms_num1(size_t offset_list_start, size_t offset_list_end);
-	std::vector<size_t> find_maybe_kallsyms_num2(size_t size, size_t addresses_list_start);
+	int find_kallsyms_num_by_names_logic(size_t start, int min_cnt, int max_cnt, size_t& kallsyms_num_offset);
 	bool find_kallsyms_names_list(int kallsyms_num, size_t kallsyms_num_end_offset, size_t& name_list_start, size_t& name_list_end);
+	bool check_kallsyms_names_list_entropy(size_t start, size_t end, int kallsyms_num);
 	bool find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end, bool & markers_list_is_align8);
 	bool find_kallsyms_seqs_of_names_list(int kallsyms_num, size_t kallsyms_relative_base_end_offset, bool markers_list_is_align8, size_t& seqs_of_names_list_start, size_t& seqs_of_names_list_end);
 	bool find_kallsyms_token_table(size_t kallsyms_markers_list_end_offset, size_t& kallsyms_token_table_start, size_t& kallsyms_token_table_end);

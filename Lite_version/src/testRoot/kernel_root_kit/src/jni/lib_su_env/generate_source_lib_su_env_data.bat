@@ -18,7 +18,8 @@ powershell -ExecutionPolicy Bypass -File "%kernel_root_path%/common/file_convert
 powershell -Command "(Get-Content res.h) -replace 'namespace {', 'namespace kernel_root {' | Set-Content res.h"
 powershell -Command "(Get-Content res.h) -replace 'fileSize', 'lib_su_env_file_size' | Set-Content res.h"
 powershell -Command "(Get-Content res.h) -replace 'data', 'lib_su_env_file_data' | Set-Content res.h"
-
+powershell -NoProfile -Command "$ins='#include <stdint.h>'; $old=Get-Content 'res.h'; @($ins)+$old | Set-Content -Encoding UTF8 'res.h'"
+powershell -NoProfile -Command "$ins='#pragma once'; $old=Get-Content 'res.h'; @($ins)+$old | Set-Content -Encoding UTF8 'res.h'"
 move /Y res.h lib_su_env_data.generated.h
 
 

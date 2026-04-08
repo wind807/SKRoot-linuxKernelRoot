@@ -5,11 +5,11 @@
 #define MIN(x, y)(x < y) ? (x) : (y)
 #endif // !MIN
 
+#define KSYM_NAME_LEN 512
 #define A64_NOP 0xD503201F
 #define R_AARCH64_RELATIVE 1027
 #define MAX_FIND_RANGE 0x1000
 namespace {
-	const int KSYM_NAME_LEN = 128;
 	struct Elf64_Rela {
 		uint64_t r_offset = 0;
 		uint64_t r_info = 0;
@@ -44,7 +44,7 @@ bool KallsymsLookupName_6_12_0::init() {
 	size_t offset_list_start = 0, offset_list_end = 0;
 
 	size_t kallsyms_relative_base_offset = 0;
-	std::vector<size_t> maybe_kallsyms_num_offset;
+	size_t kallsyms_num_offset = 0;
 
 	if (find_kallsyms_offsets_list(offset_list_start, offset_list_end)) {
 		std::cout << std::hex << "fisrt kallsyms_offset_start: 0x" << offset_list_start << std::endl;
@@ -59,20 +59,14 @@ bool KallsymsLookupName_6_12_0::init() {
 
 		std::cout << std::hex << "kallsyms_relative_base: 0x" << m_kallsyms_relative_base << ", offset: 0x" << kallsyms_relative_base_offset << std::endl;
 
-		maybe_kallsyms_num_offset = find_maybe_kallsyms_num(offset_list_start, offset_list_end);
-		if (!maybe_kallsyms_num_offset.size()) {
+		int min_cnt = (offset_list_end - offset_list_start) / sizeof(uint32_t);
+		m_kallsyms_num = find_kallsyms_num_by_names_logic(0, min_cnt - 10, min_cnt + 20, kallsyms_num_offset);
+		if (!m_kallsyms_num) {
 			std::cout << "Unable to find the num of kallsyms offset list" << std::endl;
 			return false;
 		}
 
-	} else {
-		std::cout << "Unable to find the list of 'kallsyms offsets' and 'kallsyms addresses'" << std::endl;
-		return false;
-	}
-
-	for (size_t offset : maybe_kallsyms_num_offset) {
-		m_kallsyms_num = *(uint32_t*)&m_file_buf[offset];
-		std::cout << std::hex << "current kallsyms_num: 0x" << m_kallsyms_num << ", offset: 0x" << offset << std::endl;
+		std::cout << std::hex << "kallsyms_num: 0x" << m_kallsyms_num << ", offset: 0x" << kallsyms_num_offset << std::endl;
 
 		// revise the offset list offset again
 		const int offset_list_var_len = sizeof(uint32_t);
@@ -85,68 +79,71 @@ bool KallsymsLookupName_6_12_0::init() {
 				offset_list_end -= offset_list_var_len;
 			}
 		} while (test_first_offset_list_val);
+
 		std::cout << std::hex << "kallsyms_offset_start: 0x" << offset_list_start << std::endl;
 		std::cout << std::hex << "kallsyms_offset_end: 0x" << offset_list_end << std::endl;
 		m_kallsyms_offsets.offset = offset_list_start;
-
-		size_t kallsyms_num_end_offset = offset + sizeof(m_kallsyms_num);
-		size_t name_list_start = 0, name_list_end = 0;
-		if (!find_kallsyms_names_list(m_kallsyms_num, kallsyms_num_end_offset, name_list_start, name_list_end)) {
-			std::cout << "Unable to find the list of kallsyms names list" << std::endl;
-			continue;
-		}
-		std::cout << std::hex << "kallsyms_names_start: 0x" << name_list_start << std::endl;
-		std::cout << std::hex << "kallsyms_names_end: 0x" << name_list_end << std::endl;
-		m_kallsyms_names.offset = name_list_start;
-
-		size_t markers_list_start = 0;
-		size_t markers_list_end = 0;
-		bool markers_list_is_align8 = false;
-		if (!find_kallsyms_markers_list(m_kallsyms_num, name_list_end, markers_list_start, markers_list_end, markers_list_is_align8)) {
-			std::cout << "Unable to find the list of kallsyms markers list" << std::endl;
-			continue;
-		}
-		std::cout << std::hex << "kallsyms_markers_start: 0x" << markers_list_start << std::endl;
-		std::cout << std::hex << "kallsyms_markers_end: 0x" << markers_list_end << std::endl;
-		m_kallsyms_markers.offset = markers_list_start;
-
-		size_t token_table_start = 0;
-		size_t token_table_end = 0;
-		if (!find_kallsyms_token_table(markers_list_end, token_table_start, token_table_end)) {
-			std::cout << "Unable to find the list of kallsyms token table" << std::endl;
-			continue;
-		}
-		std::cout << std::hex << "kallsyms_token_table_start: 0x" << token_table_start << std::endl;
-		std::cout << std::hex << "kallsyms_token_table_end: 0x" << token_table_end << std::endl;
-		m_kallsyms_token_table.offset = token_table_start;
-
-		size_t token_index_start = 0;
-		if (!find_kallsyms_token_index(token_table_end, token_index_start)) {
-			std::cout << "Unable to find the list of kallsyms token index" << std::endl;
-			continue;
-		}
-		std::cout << std::hex << "kallsyms_token_index_start: 0x" << token_index_start << std::endl;
-		m_kallsyms_token_index.offset = token_index_start;
-
-		size_t seqs_of_names_list_start = 0;
-		size_t seqs_of_names_list_end = 0;
-		if (!find_kallsyms_seqs_of_names_list(m_kallsyms_num, kallsyms_relative_base_offset + sizeof(uint64_t), markers_list_is_align8, seqs_of_names_list_start, seqs_of_names_list_end)) {
-			std::cout << "Unable to find the list of kallsyms seqs names list" << std::endl;
-			continue;
-		}
-		std::cout << std::hex << "kallsyms_seqs_of_names_list_start: 0x" << seqs_of_names_list_start << std::endl;
-		std::cout << std::hex << "kallsyms_seqs_of_names_list_end: 0x" << seqs_of_names_list_end << std::endl;
-		m_kallsyms_seqs_of_names.offset = seqs_of_names_list_start;
-
-		if (!resolve_kallsyms_offset_symbol_base(code_static_start, m_kallsyms_offsets.base_off)) {
-			std::cout << "Unable to find the list of kallsyms sym function entry offset" << std::endl;
-			return false;
-		}
-
-		m_kallsyms_symbols_cache.clear();
-		m_inited = true;
-		break;
+	} else {
+		std::cout << "Unable to find the list of 'kallsyms offsets'" << std::endl;
+		return false;
 	}
+
+	size_t kallsyms_num_end_offset = kallsyms_num_offset + sizeof(m_kallsyms_num);
+	size_t name_list_start = 0, name_list_end = 0;
+	if (!find_kallsyms_names_list(m_kallsyms_num, kallsyms_num_end_offset, name_list_start, name_list_end)) {
+		std::cout << "Unable to find the list of kallsyms names list" << std::endl;
+		return false;
+	}
+	std::cout << std::hex << "kallsyms_names_start: 0x" << name_list_start << std::endl;
+	std::cout << std::hex << "kallsyms_names_end: 0x" << name_list_end << std::endl;
+	m_kallsyms_names.offset = name_list_start;
+
+	size_t markers_list_start = 0;
+	size_t markers_list_end = 0;
+	bool markers_list_is_align8 = false;
+	if (!find_kallsyms_markers_list(m_kallsyms_num, name_list_end, markers_list_start, markers_list_end, markers_list_is_align8)) {
+		std::cout << "Unable to find the list of kallsyms markers list" << std::endl;
+		return false;
+	}
+	std::cout << std::hex << "kallsyms_markers_start: 0x" << markers_list_start << std::endl;
+	std::cout << std::hex << "kallsyms_markers_end: 0x" << markers_list_end << std::endl;
+	m_kallsyms_markers.offset = markers_list_start;
+
+	size_t token_table_start = 0;
+	size_t token_table_end = 0;
+	if (!find_kallsyms_token_table(markers_list_end, token_table_start, token_table_end)) {
+		std::cout << "Unable to find the list of kallsyms token table" << std::endl;
+		return false;
+	}
+	std::cout << std::hex << "kallsyms_token_table_start: 0x" << token_table_start << std::endl;
+	std::cout << std::hex << "kallsyms_token_table_end: 0x" << token_table_end << std::endl;
+	m_kallsyms_token_table.offset = token_table_start;
+
+	size_t token_index_start = 0;
+	if (!find_kallsyms_token_index(token_table_end, token_index_start)) {
+		std::cout << "Unable to find the list of kallsyms token index" << std::endl;
+		return false;
+	}
+	std::cout << std::hex << "kallsyms_token_index_start: 0x" << token_index_start << std::endl;
+	m_kallsyms_token_index.offset = token_index_start;
+
+	size_t seqs_of_names_list_start = 0;
+	size_t seqs_of_names_list_end = 0;
+	if (!find_kallsyms_seqs_of_names_list(m_kallsyms_num, kallsyms_relative_base_offset + sizeof(uint64_t), markers_list_is_align8, seqs_of_names_list_start, seqs_of_names_list_end)) {
+		std::cout << "Unable to find the list of kallsyms seqs names list" << std::endl;
+		return false;
+	}
+	std::cout << std::hex << "kallsyms_seqs_of_names_list_start: 0x" << seqs_of_names_list_start << std::endl;
+	std::cout << std::hex << "kallsyms_seqs_of_names_list_end: 0x" << seqs_of_names_list_end << std::endl;
+	m_kallsyms_seqs_of_names.offset = seqs_of_names_list_start;
+
+	if (!resolve_kallsyms_offset_symbol_base(code_static_start, m_kallsyms_offsets.base_off)) {
+		std::cout << "Unable to find the list of kallsyms sym function entry offset" << std::endl;
+		return false;
+	}
+
+	m_kallsyms_symbols_cache.clear();
+	m_inited = true;
 	return true;
 }
 
@@ -206,42 +203,24 @@ size_t KallsymsLookupName_6_12_0::find_kallsyms_relative_base_offset(size_t offs
 	return 0;
 }
 
-std::vector<size_t> KallsymsLookupName_6_12_0::find_maybe_kallsyms_num(size_t offset_list_start, size_t offset_list_end) {
-	//Search upwards
-	if (offset_list_start < MAX_FIND_RANGE) {
-		std::cout << "The starting position of kallsyms offset list is too small and abnormal." << std::endl;
-		return {};
-	}
-	std::vector<size_t> maybe_kallsyms_num;
-	for (int i = 0; i < 10; i++) {
-		uint32_t val1 = *(uint32_t*)&m_file_buf[offset_list_start - i * sizeof(uint32_t)];
-		if (val1 != 0) {
-			break;
-		}
-		maybe_kallsyms_num.push_back((offset_list_end - offset_list_start + i * sizeof(uint32_t)) / sizeof(uint32_t));
-	}
-	if (maybe_kallsyms_num.size() == 0) {
-		std::cout << "Unable to find the kallsyms num, not even a single possibility." << std::endl;
-		return {};
-	}
+int KallsymsLookupName_6_12_0::find_kallsyms_num_by_names_logic(size_t start, int min_cnt, int max_cnt, size_t& kallsyms_num_offset) {
+	int min_expected = min_cnt;
+	int max_expected = max_cnt;
+	int kallsyms_num = 0;
 
-	// Go further and find 'kallsyms num'
-	std::vector<size_t> maybe_kallsyms_num_offset;
-	for (size_t maybe_num : maybe_kallsyms_num) {
-		const int kallsyms_token_index_len = 256 * sizeof(short);
-		for (size_t b = MAX_FIND_RANGE; b < offset_list_start - kallsyms_token_index_len; b += sizeof(uint32_t)) {
-			uint32_t num = *(uint32_t*)&m_file_buf[b];
-			if (num == maybe_num) {
-				maybe_kallsyms_num_offset.push_back(b);
+	// Search for all possible values of num
+	for (size_t x = start; x < m_file_buf.size() - 8; x += 4) {
+		int test_num = *(int*)&m_file_buf[x];
+		if (test_num >= min_expected && test_num <= max_expected) {
+			size_t tmp_name_start = 0, tmp_name_end = 0;
+			if (find_kallsyms_names_list(test_num, x + 4, tmp_name_start, tmp_name_end)) {
+				kallsyms_num = test_num;
+				kallsyms_num_offset = x;
+				break;
 			}
 		}
 	}
-	if (maybe_kallsyms_num_offset.size() == 0) {
-		std::cout << "Unable to find the kallsyms num offset, not even a single possibility." << std::endl;
-		return {};
-	}
-	std::reverse(maybe_kallsyms_num_offset.begin(), maybe_kallsyms_num_offset.end());
-	return maybe_kallsyms_num_offset;
+	return kallsyms_num;
 }
 
 bool KallsymsLookupName_6_12_0::find_kallsyms_names_list(int kallsyms_num, size_t kallsyms_num_end_offset, size_t& name_list_start, size_t& name_list_end) {
@@ -258,8 +237,9 @@ bool KallsymsLookupName_6_12_0::find_kallsyms_names_list(int kallsyms_num, size_
 		name_list_start = x;
 		break;
 	}
-
+	if (name_list_start == 0) return false;
 	size_t off = name_list_start;
+	int actual_parsed_num = 0;
 	for (int i = 0; i < kallsyms_num; i++) {
 		if (off >= m_file_buf.size()) return false;
 
@@ -272,15 +252,58 @@ bool KallsymsLookupName_6_12_0::find_kallsyms_names_list(int kallsyms_num, size_
 			unsigned char ch2 = (unsigned char)m_file_buf[off++];
 			sym_len = (ch & 0x7F) | (ch2 << 7);
 		}
-		if (sym_len == 0) {
-			break;
-		}
+		if (sym_len == 0) break;
+		if (sym_len >= KSYM_NAME_LEN) return false;
 		off += sym_len;
+		actual_parsed_num++;
+	}
+	if (actual_parsed_num == 0) return false;
+	if (!check_kallsyms_names_list_entropy(name_list_start, off, actual_parsed_num)) {
+		return false;
 	}
 	name_list_end = off;
 	return true;
 }
 
+bool KallsymsLookupName_6_12_0::check_kallsyms_names_list_entropy(size_t start, size_t end, int kallsyms_num) {
+	size_t total_parsed_size = end - start;
+	// Global density verification (average size)
+	// Fine-tuning for version 6.1.0: Due to the longer symbols, the upper limit of the overall average size needs to be relaxed.
+	// However, the lower limit of 1.5 remains valid (values below 1.5 are definitely small integer arrays). The upper limit can be relaxed from 40 to 80 or even 100.
+	if (total_parsed_size < kallsyms_num * 1.5 || total_parsed_size > kallsyms_num * 80.0) {
+		return false;
+	}
+	int unique_bytes_count = 0;
+	int zero_byte_count = 0;
+	bool seen_bytes[256] = { false };
+	// Scan this memory area and count the byte distribution
+	for (size_t p = start; p < end; ++p) {
+		unsigned char b = (unsigned char)m_file_buf[p];
+		if (b == 0x00) {
+			zero_byte_count++;
+		}
+		if (!seen_bytes[b]) {
+			seen_bytes[b] = true;
+			unique_bytes_count++;
+		}
+	}
+
+	// Character richness verification (Alphabet Size)
+	// Even if the length field becomes double-byte, the data body is still a carnival of 256 kinds of tokens.
+	// The vast majority of byte types used are over 200, and here, the 128-bit limit remains a formidable defense that swiftly defeats the empty array.
+	if (unique_bytes_count < 128) {
+		return false;
+	}
+
+	// Zero Ratio Check
+	// In a genuine compressed stream, 0x00 occupies a very small proportion. If what you scanned is a 32-bit array with false positives,
+	// 0x00 accounts for more than 50% of the minutes. Card 15% is still perfect.
+	double zero_ratio = (double)zero_byte_count / total_parsed_size;
+	if (zero_ratio > 0.15) {
+		return false;
+	}
+	return true;
+}
 
 bool KallsymsLookupName_6_12_0::find_kallsyms_markers_list(int kallsyms_num, size_t name_list_end_offset, size_t& markers_list_start, size_t& markers_list_end, bool & markers_list_is_align8) {
 	size_t start = align_up<8>(name_list_end_offset);
