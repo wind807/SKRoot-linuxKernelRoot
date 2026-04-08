@@ -386,7 +386,7 @@ static inline bool persist_data_lock(const fs::path& empty_root_dir) {
         const std::string item_name = orig_item.filename().string();
 
         if (item_name.empty()) continue;
-        //if (item_name.rfind("DdHd", 0) == 0) continue;
+        if (item_name.rfind("DdHd", 0) == 0) continue;
 
         const fs::path puppet_path = items_dir / (std::to_string(index) + "_" + item_name);
 
