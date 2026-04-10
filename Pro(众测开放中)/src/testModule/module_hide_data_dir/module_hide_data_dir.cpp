@@ -85,7 +85,7 @@ public:
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("隐藏/data目录")
-SKROOT_MODULE_VERSION("1.0.6")
+SKROOT_MODULE_VERSION("1.0.8")
 SKROOT_MODULE_DESC("内核级隐藏 /data 指定目录，彻底阻断文件扫描；底层拦截机制，免疫各类基于漏洞的暴力扫盘。")
 SKROOT_MODULE_AUTHOR("SKRoot")
 SKROOT_MODULE_UUID32("ae12076c010ebabbb233affdd0239c14")

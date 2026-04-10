@@ -19,8 +19,9 @@ PatchBase::~PatchBase() {}
 
 void PatchBase::emit_check_current_allow_visible_to_x10(Assembler* a) {
 	uint64_t comm_name_arr[2] = {0};
-    memcpy(comm_name_arr, m_whitelist_comm_name.c_str(), MY_TASK_COMM_LEN);
-
+	size_t copy_len = std::min(m_whitelist_comm_name.length(), (size_t)(MY_TASK_COMM_LEN - 1));
+	memcpy(comm_name_arr, m_whitelist_comm_name.c_str(), copy_len);
+	
 	Label label_end = a->newLabel();
 
 	a->mov(x10, Imm(0));
