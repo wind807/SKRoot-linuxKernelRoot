@@ -73,15 +73,20 @@
 
   function renderFiles(files) {
     fileList.innerHTML = files.map(f => {
+      const isProtected = !!(f.hideProtected);
       const icon = f.isDir ? "📁" : (f.canExec ? '<span style="color:#9333ea">⚙️</span>' : "📄");
       const fullPath = ui.joinPath(currentPath, f.name);
       const displaySize = f.isDir ? "文件夹" : ui.formatBytes(f.size);
+      const metaText = isProtected ? `隐藏保护中 · ${displaySize}` : displaySize;
+      const protectedMark = isProtected
+        ? `<span class="file-protected-mark" aria-label="隐藏保护中" title="隐藏保护中"></span>`
+        : '';
       return `
-        <div class="file-row" data-path="${ui.safeHtml(fullPath)}" data-isdir="${!!f.isDir}" data-exec="${!!f.canExec}">
+        <div class="file-row${isProtected ? ' is-protected' : ''}" data-path="${ui.safeHtml(fullPath)}" data-isdir="${!!f.isDir}" data-exec="${!!f.canExec}" data-protected="${isProtected}">
           <div class="file-icon">${icon}</div>
           <div class="file-info">
             <div class="file-name">${ui.safeHtml(f.name)}</div>
-            <div class="file-meta">${ui.safeHtml(f.date || '')} ${ui.safeHtml(f.time || '')} | ${ui.safeHtml(displaySize)}</div>
+            <div class="file-meta">${protectedMark}<span>${ui.safeHtml(metaText)}</span></div>
           </div>
         </div>
       `;
@@ -275,7 +280,7 @@
   pathInput.onclick = () => {
     pathInput.readOnly = false;
     pathInput.focus();
-    pathGo.style.display = "block";
+    pathGo.style.display = "flex";
   };
 
   pathGo.onclick = () => loadDir(pathInput.value.trim() || currentPath);

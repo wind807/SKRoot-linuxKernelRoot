@@ -17,6 +17,8 @@
 #include "idle_killer.h"
 #include "json_helper.h"
 #include "url_encode_utils.h"
+#include "list_dir_helper.h"
+#include "simple_hash_util.h"
 
 #define WORK_DIR_NAME "work"
 #define MAX_QUICK_ACTIONS 10
@@ -94,7 +96,7 @@ class MyWebHttpHandler : public kernel_module::WebUIHttpHandler {
 public:
     void onPrepareCreate(const char* root_key, const char* module_private_dir, uint32_t port) override {
         m_root_key = root_key;
-        m_hidden_dir = (fs::path(module_private_dir) / WORK_DIR_NAME).string();
+        m_hide_dir = (fs::path(module_private_dir) / WORK_DIR_NAME).string();
         m_su_interactive.start();
         fork_sh_process_daemon();
         m_idle_killer.start(std::chrono::seconds(30), [this] {
@@ -161,59 +163,8 @@ private:
     std::string handle_list_dir(const std::string& body) {
         m_idle_killer.touch();
         std::string dir = body.empty() ? "/" : body;
-        std::error_code ec;
-        fs::path target(dir);
-        if (!fs::exists(target, ec) || ec) return "[]";
-        if (!fs::is_directory(target, ec) || ec) return "[]";
-        struct FileItem {
-            std::string name;
-            bool is_dir = false;
-            std::string date;
-            std::string time;
-            uint64_t size = 0;
-        };
-        std::vector<FileItem> items;
-        for (fs::directory_iterator it(target, fs::directory_options::skip_permission_denied, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
-            if (ec) { ec.clear(); continue; }
-            const auto& entry = *it;
-            FileItem item;
-            item.name = entry.path().filename().string();
-
-            std::error_code sub_ec;
-            item.is_dir = entry.is_directory(sub_ec);
-            if (sub_ec) {
-                sub_ec.clear();
-                item.is_dir = false;
-            }
-            struct stat st{};
-            if (::lstat(entry.path().c_str(), &st) == 0) {
-                if (!item.is_dir) item.size = static_cast<uint64_t>(st.st_size);
-                format_local_time(st.st_mtime, item.date, item.time);
-            } else {
-                item.size = 0;
-                item.date = "";
-                item.time = "";
-            }
-            items.push_back(std::move(item));
-        }
-        std::sort(items.begin(), items.end(), [](const FileItem& a, const FileItem& b) {
-            if (a.is_dir != b.is_dir) return a.is_dir > b.is_dir; // 目录在前
-            return a.name < b.name; // 同类按名字升序
-        });
-        std::string json = "[";
-        for (size_t i = 0; i < items.size(); ++i) {
-            const auto& f = items[i];
-            if (i != 0) json += ",";
-            json += "{";
-            json += "\"name\":\"" + json_escape(f.name) + "\",";
-            json += "\"isDir\":" + std::string(f.is_dir ? "true" : "false") + ",";
-            json += "\"date\":\"" + json_escape(f.date) + "\",";
-            json += "\"time\":\"" + json_escape(f.time) + "\",";
-            json += "\"size\":" + std::to_string(f.size);
-            json += "}";
-        }
-        json += "]";
-        return json;
+        const std::string special_comm = SimpleHashUtil::to_random_string(m_root_key).data();
+        return list_dir_helper::build_list_dir_result_json(dir, special_comm);
     }
 
     std::string handle_get_auto_tasks() {
@@ -228,7 +179,7 @@ private:
         return "OK";
     }
 	
-    std::string handle_get_hide_dir() { return m_hidden_dir; }
+    std::string handle_get_hide_dir() { return m_hide_dir; }
 	
 	std::string handle_check_file_type(const std::string& filepath) {
         m_idle_killer.touch();
@@ -266,14 +217,14 @@ private:
     }
 private:
     std::string m_root_key;
-    std::string m_hidden_dir;
+    std::string m_hide_dir;
     SuInteractive m_su_interactive;
     IdleKiller m_idle_killer;
 };
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("隐蔽的系统终端")
-SKROOT_MODULE_VERSION("3.0.4")
+SKROOT_MODULE_VERSION("3.0.5")
 SKROOT_MODULE_DESC("提供独立隐蔽的 sh 执行通道，彻底替代终端类 App，避免终端类 App 带来的特征暴露。")
 SKROOT_MODULE_AUTHOR("SKRoot")
 SKROOT_MODULE_UUID32("zse9vkTjLjWXbafvx8Mlh1MTf8SMTUEL")

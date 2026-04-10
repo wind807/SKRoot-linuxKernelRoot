@@ -9,7 +9,6 @@ const $btnAdd = document.getElementById('btnAdd');
 const $fabAdd = document.getElementById('fabAdd');
 const $list = document.getElementById('list');
 const $error = document.getElementById('error');
-const $verSpan = document.getElementById('ver');
 
 // ====== 状态 ======
 /** @type {string[]} */
@@ -140,22 +139,10 @@ $input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') doAdd();
 });
 
-async function initVersion() {
-  try {
-    const ver = await RequestApi.getVersion();
-    $verSpan.textContent = ver || '未知';
-  } catch (err) {
-    $verSpan.textContent = '读取失败';
-    console.error('getVersion 出错:', err);
-    alert('读取版本失败：' + (err instanceof Error ? err.message : String(err)));
-  }
-}
-
 // ====== 入口初始化 ======
 async function onReady() {
   items = await load();
   render();
-  await initVersion();
 }
 document.addEventListener('DOMContentLoaded', onReady);
 

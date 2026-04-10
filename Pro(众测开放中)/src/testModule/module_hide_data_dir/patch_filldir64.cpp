@@ -39,11 +39,18 @@ KModErr PatchFilldir64::patch_filldir64(const std::set<std::string>& hide_dir_li
 
 	std::vector<std::string> hide_dirs(hide_dir_list.begin(), hide_dir_list.end());
 
-	//生成Hook func汇编命令
+	// 生成Hook func汇编命令
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
 	auto a = asm_ctx.assembler();
+	Label L_allow_visible = a->newLabel();
 
+	// 这里下面是内核态要运行的指令
 	kernel_module::arm64_before_hook_start(a);
+
+	// 比较下进程名，放行白名单进程名。
+	emit_check_current_allow_visible_to_x10(a);
+	a->cbnz(x10, L_allow_visible);
+
 	for (size_t i = 0; i < hide_dirs.size(); ++i) {
 		Label L_next = a->newLabel();
 
@@ -71,6 +78,8 @@ KModErr PatchFilldir64::patch_filldir64(const std::set<std::string>& hide_dir_li
 
 		a->bind(L_next);
 	}
+	
+	a->bind(L_allow_visible);
 	kernel_module::arm64_before_hook_end(a, true); // 正常返回
 	return patch_kernel_before_hook(m_filldir64, a);
 }

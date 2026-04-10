@@ -64,21 +64,3 @@ static std::string json_escape(const std::string& s) {
     }
     return out;
 }
-
-static void format_local_time(std::time_t t, std::string& out_date, std::string& out_time) {
-    char date_buf[16] = {0};
-    char time_buf[16] = {0};
-
-    std::tm tmv{};
-#if defined(_WIN32)
-    localtime_s(&tmv, &t);
-#else
-    localtime_r(&t, &tmv);
-#endif
-
-    std::strftime(date_buf, sizeof(date_buf), "%Y-%m-%d", &tmv);
-    std::strftime(time_buf, sizeof(time_buf), "%H:%M", &tmv);
-
-    out_date = date_buf;
-    out_time = time_buf;
-}
