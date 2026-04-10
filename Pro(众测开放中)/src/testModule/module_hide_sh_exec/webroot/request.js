@@ -54,12 +54,24 @@
     return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
   }
 
+  async function checkFileType(filePath) {
+    const resp = await postText('/checkFileType', filePath);
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
+
+  async function checkExecMount(dir) {
+    const resp = await postText('/checkExecMount', dir);
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
+
   return {
     sendCommand,
     getNewOutput,
     getQuickActions,
     listDir,
     getAutoTasks,
-    saveAutoTasks
+    saveAutoTasks,
+    checkFileType,
+    checkExecMount
   };
 })();

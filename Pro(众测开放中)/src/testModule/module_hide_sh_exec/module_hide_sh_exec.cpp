@@ -1,10 +1,12 @@
 ﻿
 #include <algorithm>
+#include <fstream>
 #include <filesystem>
 #include <system_error>
 #include <chrono>
 #include <ctime>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <cerrno>
 #include <cstring>
 
@@ -61,7 +63,6 @@ std::string module_on_install(const char* root_key, const char* module_private_d
     return "";
 }
 
-
 static bool pid_alive(pid_t pid) {
     if (pid <= 1) return false;
     if (::kill(pid, 0) == 0) return true;
@@ -97,6 +98,8 @@ public:
         else if(path == "/listDir") resp = handle_list_dir(body);
         else if(path == "/getAutoTasks") resp = handle_get_auto_tasks();
         else if(path == "/saveAutoTasks") resp = handle_save_auto_tasks(body);
+        else if(path == "/checkFileType") resp = handle_check_file_type(body);
+        else if(path == "/checkExecMount") resp = handle_check_exec_mount(body);
 
         kernel_module::webui::send_text(conn, 200, resp);
         return true;
@@ -156,13 +159,8 @@ private:
             uint64_t size = 0;
         };
         std::vector<FileItem> items;
-        for (fs::directory_iterator it(target, fs::directory_options::skip_permission_denied, ec);
-            !ec && it != fs::directory_iterator();
-            it.increment(ec)) {
-            if (ec) {
-                ec.clear();
-                continue;
-            }
+        for (fs::directory_iterator it(target, fs::directory_options::skip_permission_denied, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
+            if (ec) { ec.clear(); continue; }
             const auto& entry = *it;
             FileItem item;
             item.name = entry.path().filename().string();
@@ -215,7 +213,41 @@ private:
         kernel_module::write_string_disk_storage("auto_tasks", body.c_str());
         return "OK";
     }
-
+	
+	std::string handle_check_file_type(const std::string& filepath) {
+        m_idle_killer.touch();
+        if (filepath.empty()) return "unknown";
+        std::error_code ec;
+        if (!fs::is_regular_file(filepath, ec)) return "not a file";
+        std::ifstream file(filepath, std::ios::binary);
+        if (!file) return "error reading";
+        char buffer[32] = {0};
+        file.read(buffer, sizeof(buffer));
+        std::streamsize bytesRead = file.gcount();
+        if (bytesRead >= 4 && buffer[0] == 0x7f && buffer[1] == 'E' && buffer[2] == 'L' && buffer[3] == 'F') {
+            if (bytesRead >= 20) {
+                uint16_t machine = *reinterpret_cast<uint16_t*>(&buffer[18]);
+                if (machine == 183) return "executable_arm64";
+                else if (machine == 40) return "executable_arm32";
+               else return "executable_other_elf";
+            }
+            return "executable_unknown_elf";
+        }
+        if (bytesRead >= 2 && buffer[0] == '#' && buffer[1] == '!') return "shell_script";
+        if (filepath.size() >= 3 && filepath.substr(filepath.size() - 3) == ".sh") return "shell_script";
+        return "unknown";
+    }
+	
+	std::string handle_check_exec_mount(const std::string& path) {
+        m_idle_killer.touch();
+        if (path.empty()) return "Empty path";
+        std::error_code ec;
+        if (!fs::exists(path, ec)) return "Path does not exist";
+        struct statvfs st;
+        if (::statvfs(path.c_str(), &st) != 0) return "Failed to get filesystem status";
+		bool is_noexec = (st.f_flag & ST_NOEXEC) != 0;
+		return is_noexec ? "can not exec" : "can exec";
+    }
 private:
     std::string m_root_key;
     SuInteractive m_su_interactive;
@@ -224,7 +256,7 @@ private:
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("隐蔽的系统终端")
-SKROOT_MODULE_VERSION("3.0.1")
+SKROOT_MODULE_VERSION("3.0.3")
 SKROOT_MODULE_DESC("提供独立隐蔽的 sh 执行通道，彻底替代终端类 App，避免终端类 App 带来的特征暴露。")
 SKROOT_MODULE_AUTHOR("SKRoot")
 SKROOT_MODULE_UUID32("zse9vkTjLjWXbafvx8Mlh1MTf8SMTUEL")

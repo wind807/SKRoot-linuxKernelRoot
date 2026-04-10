@@ -138,18 +138,28 @@
     return args;
   }
 
-  function splitPathToDirAndBase(filePath) {
+  function getPathDir(filePath) {
     const p = String(filePath ?? "");
     const idx = p.lastIndexOf("/");
-    if (idx < 0) return { dir: ".", base: p };
-    if (idx === 0) return { dir: "/", base: p.slice(1) };
-    return { dir: p.slice(0, idx), base: p.slice(idx + 1),};
+    if (idx < 0) return ".";
+    if (idx === 0) return "/";
+    return p.slice(0, idx);
   }
 
   function buildShCommand(filePath, rawArgs) {
-    const { dir, base } = splitPathToDirAndBase(filePath);
+    filePath = String(filePath ?? "");
+    const dir = getPathDir(filePath);
     const argv = splitShellArgs(rawArgs).map(shellQuote);
-    const cmd = ["(cd", shellQuote(dir), "&&", "sh", shellQuote("./" + base), ...argv,].join(" ");
+    const cmd = ["(cd", shellQuote(dir), "&&", "sh", shellQuote(filePath), ...argv,].join(" ");
+    return cmd + ")";
+  }
+
+  function buildExecCommand(filePath, rawArgs) {
+    filePath = String(filePath ?? "");
+    const dir = getPathDir(filePath);
+    const argv = splitShellArgs(rawArgs).map(shellQuote);
+    const quotedFile = shellQuote(filePath);
+    const cmd = ["(cd", shellQuote(dir), "&&", "chmod", "777", quotedFile, "&&", quotedFile, ...argv].join(" ");
     return cmd + ")";
   }
 
@@ -157,5 +167,7 @@
     createTerminalCore,
     shellQuote,
     buildShCommand,
+    buildExecCommand,
+    getPathDir,
   };
 })();

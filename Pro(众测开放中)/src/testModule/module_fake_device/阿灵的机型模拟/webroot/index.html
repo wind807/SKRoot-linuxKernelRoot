@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>伪装机型面板</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="toast.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="top-row">
+          <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+            <div style="width:40px; height:40px; border-radius:12px; background:linear-gradient(180deg,#ffffff 0%, #f2f7ff 100%); border:1px solid rgba(0,122,255,0.10); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,122,255,0.08); flex-shrink:0;">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="7" y="3.5" width="10" height="17" rx="2.8" stroke="#007AFF" stroke-width="1.8"/>
+                <path d="M10 7.5H14" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="12" cy="17.2" r="1" fill="#007AFF"/>
+              </svg>
+            </div>
+            <div>
+              <div class="eyebrow">Device Spoof</div>
+              <div class="title">伪装机型</div>
+            </div>
+          </div>
+          <div class="badge">控制台模块</div>
+        </div>
+
+      </div>
+
+      <div class="panel-body">
+        <input
+          id="searchInput"
+          class="search-input"
+          type="text"
+          placeholder="搜索品牌 / 机型 / 代号，如 Pixel、SM-S9280"
+        />
+
+        <div class="list-area" id="listArea"></div>
+      </div>
+
+      <div class="panel-footer">
+        <button id="saveBtn" class="save-btn">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <div class="toast-inner">保存成功，重启生效！</div>
+  </div>
+
+  <script>
+
+  </script>
+    <script src="request.js"></script>
+  <script src="toast.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -25,6 +25,7 @@
         </div>
       </div>
       <div id="out" class="out" role="log" aria-live="polite"></div>
+      <div id="inlineTip" class="inline-tip">部分脚本执行后，可能会没有反应，这个不是没有执行，而是暂时没有回显。按步骤继续输入即可。</div>
 
       <div class="composer">
         <div id="quickActions" class="quick-actions"></div>
@@ -171,7 +172,7 @@
   </div>
 </div>
 
-<div id="confirmModal" class="modal-wrap">
+<div id="confirmQuickTaskModal" class="modal-wrap">
   <div class="modal">
     <div class="modal-title">确认覆盖</div>
     <div class="modal-body">
@@ -180,8 +181,25 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button class="m-btn m-cancel" id="confirmCancel">取消</button>
-      <button class="m-btn m-exec" id="confirmOk">确定覆盖</button>
+      <button class="m-btn m-cancel" id="confirmQuickTaskCancel">取消</button>
+      <button class="m-btn m-exec" id="confirmQuickTaskOk">确定覆盖</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="execMountModal" class="modal-wrap">
+  <div class="modal">
+    <div class="modal-title">当前目录不可直接执行</div>
+    <div class="modal-body">
+      <div class="modal-desc">
+        当前文件所在目录不能运行。是否先帮你拷贝到 <strong>/data/adb</strong>，再继续执行？
+      </div>
+      <div class="code-preview modal-code-compact" id="execMountTarget"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="m-btn m-cancel" id="execMountCancel">取消</button>
+      <button class="m-btn m-exec" id="execMountConfirm">一键拷贝并继续</button>
     </div>
   </div>
 </div>

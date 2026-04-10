@@ -43,12 +43,19 @@
   const deleteCancel = document.getElementById("deleteCancel");
   const deleteConfirm = document.getElementById("deleteConfirm");
   
-  const confirmModal = document.getElementById("confirmModal");
-  const confirmCancel = document.getElementById("confirmCancel");
-  const confirmOk = document.getElementById("confirmOk");
+  const confirmQuickTaskModal = document.getElementById("confirmQuickTaskModal");
+  const confirmQuickTaskCancel = document.getElementById("confirmQuickTaskCancel");
+  const confirmQuickTaskOk = document.getElementById("confirmQuickTaskOk");
+
+  const execMountModal = document.getElementById("execMountModal");
+  const execMountTarget = document.getElementById("execMountTarget");
+  const execMountCancel = document.getElementById("execMountCancel");
+  const execMountConfirm = document.getElementById("execMountConfirm");
 
   let currentPath = "/sdcard";
   let currentFile = null;
+  let pendingMode = null;
+  let pendingPreparedFile = null;
 
   async function loadDir(path) {
     currentPath = path || "/sdcard";
@@ -64,22 +71,22 @@
   }
 
   function renderFiles(files) {
-      fileList.innerHTML = files.map(f => {
-        const icon = f.isDir ? "📁" : (f.canExec ? '<span style="color:#9333ea">⚙️</span>' : "📄");
-        const fullPath = ui.joinPath(currentPath, f.name);
-        const displaySize = f.isDir ? "文件夹" : ui.formatBytes(f.size);
-        return `
-          <div class="file-row" data-path="${ui.safeHtml(fullPath)}" data-isdir="${!!f.isDir}" data-exec="${!!f.canExec}">
-            <div class="file-icon">${icon}</div>
-            <div class="file-info">
-              <div class="file-name">${ui.safeHtml(f.name)}</div>
-              <div class="file-meta">${ui.safeHtml(f.date || '')} ${ui.safeHtml(f.time || '')} | ${ui.safeHtml(displaySize)}</div>
-            </div>
+    fileList.innerHTML = files.map(f => {
+      const icon = f.isDir ? "📁" : (f.canExec ? '<span style="color:#9333ea">⚙️</span>' : "📄");
+      const fullPath = ui.joinPath(currentPath, f.name);
+      const displaySize = f.isDir ? "文件夹" : ui.formatBytes(f.size);
+      return `
+        <div class="file-row" data-path="${ui.safeHtml(fullPath)}" data-isdir="${!!f.isDir}" data-exec="${!!f.canExec}">
+          <div class="file-icon">${icon}</div>
+          <div class="file-info">
+            <div class="file-name">${ui.safeHtml(f.name)}</div>
+            <div class="file-meta">${ui.safeHtml(f.date || '')} ${ui.safeHtml(f.time || '')} | ${ui.safeHtml(displaySize)}</div>
           </div>
-        `;
-      }).join('');
-      fileList.scrollTop = 0;
-    }
+        </div>
+      `;
+    }).join('');
+    fileList.scrollTop = 0;
+  }
 
   function openFileSheet() {
     autoBtn.classList.remove("active");
@@ -99,33 +106,156 @@
     }
   }
 
-  async function performTransfer() {
-    let fullCmd;
-    try {
-      fullCmd = window.SKTerminalCore.buildShCommand(currentFile, autoArgInput.value);
-    } catch (e) {
-      alert(e.message || "参数格式错误");
+  function getFileBaseName(filePath) {
+    return String(filePath || "").split('/').pop() || "";
+  }
+
+  function getAdbCopiedPath(filePath) {
+    return ui.joinPath("/data/adb", getFileBaseName(filePath));
+  }
+
+  function clearPendingPreparedFile() {
+    pendingPreparedFile = null;
+  }
+
+  async function resolvePreparedFile(filePath) {
+    const fileType = await RequestApi.checkFileType(filePath);
+    if (fileType === "shell_script") return { sourceFile: filePath, resolvedFile: filePath, fileType, needsCopy: false, };
+    if (fileType === "executable_arm64" || fileType === "executable_arm32") {
+      const dir = window.SKTerminalCore.getPathDir(filePath);
+      const mountState = await RequestApi.checkExecMount(dir);
+      if (mountState === "can exec") return { sourceFile: filePath, resolvedFile: filePath, fileType, needsCopy: false, };
+      if (mountState === "can not exec") return { sourceFile: filePath, resolvedFile: getAdbCopiedPath(filePath), fileType, needsCopy: true, };
+      throw new Error("执行目录检测结果异常：" + (mountState || "未知"));
+    }
+    throw new Error("当前文件不支持直接执行：" + (fileType || "未知类型"));
+  }
+
+  function showPreparedModal() {
+    if (!pendingPreparedFile) return;
+    if (pendingMode === "exec") {
+      execCode.textContent = pendingPreparedFile.resolvedFile;
+      argInput.value = "";
+      ui.showModal(execModal);
       return;
     }
-    const newTasks = [{ cmd: fullCmd, delay: "0" }];
+    if (pendingMode === "simulator") {
+      autoCode.textContent = pendingPreparedFile.resolvedFile;
+      autoArgInput.value = "";
+      ui.showModal(autoModal);
+    }
+  }
 
-    confirmOk.disabled = true;
-    confirmOk.textContent = "同步中...";
-
+  async function prepareAndOpenFlow(mode) {
+    pendingMode = mode;
+    clearPendingPreparedFile();
     try {
-      const res = await RequestApi.saveAutoTasks(JSON.stringify(newTasks));
-      if (res === "OK") {
-        ui.hideModal(confirmModal);
-        ui.hideModal(autoModal);
-        closeFileSheet();
-        window.SKInputSimulator.replaceTasks(newTasks);
-        app.openAutoSheet();
+      const prepared = await resolvePreparedFile(currentFile);
+      pendingPreparedFile = prepared;
+      ui.hideModal(actionModal);
+      if (prepared.needsCopy) {
+        execMountTarget.textContent = `${prepared.sourceFile} → ${prepared.resolvedFile}`;
+        ui.showModal(execMountModal);
+        return;
       }
+      showPreparedModal();
     } catch (e) {
-      alert("同步至服务器失败，请检查网络");
+      alert(e.message || "文件检查失败，请稍后重试");
+    }
+  }
+
+  function buildPendingCommand(rawArgs) {
+    if (!pendingPreparedFile) throw new Error("当前没有可执行文件");
+    if (pendingPreparedFile.fileType === "shell_script") return window.SKTerminalCore.buildShCommand(pendingPreparedFile.resolvedFile, rawArgs);
+    if (pendingPreparedFile.fileType === "executable_arm64" || pendingPreparedFile.fileType === "executable_arm32") return window.SKTerminalCore.buildExecCommand(pendingPreparedFile.resolvedFile, rawArgs);
+    throw new Error("当前文件类型不支持执行");
+  }
+
+  async function executeImmediateCommand(finalCmd) {
+    closeFileSheet();
+    cmd.value = finalCmd;
+    await app.sendCommand();
+  }
+
+  async function submitPreparedCommand(options = {}) {
+    const skipConfirm = !!options.skipConfirm;
+    if (!pendingPreparedFile) {
+      alert("当前没有可执行文件");
+      return;
+    }
+
+    if (pendingMode === "exec") {
+      let finalCmd;
+      try {
+        finalCmd = buildPendingCommand(argInput.value);
+      } catch (e) {
+        alert(e.message || "参数格式错误");
+        return;
+      }
+      ui.hideModal(execModal);
+      await executeImmediateCommand(finalCmd);
+      return;
+    }
+
+    if (pendingMode === "simulator") {
+      let fullCmd;
+      try {
+        fullCmd = buildPendingCommand(autoArgInput.value);
+      } catch (e) {
+        alert(e.message || "参数格式错误");
+        return;
+      }
+      const tasks = window.SKInputSimulator?.getTasks?.() || [];
+      const hasContent = tasks.length > 0 && tasks[0].cmd && tasks[0].cmd.trim() !== "";
+      if (hasContent && !skipConfirm) {
+        ui.showModal(confirmQuickTaskModal);
+        return;
+      }
+      const newTasks = [{ cmd: fullCmd, delay: "0" }];
+      confirmQuickTaskOk.disabled = true;
+      confirmQuickTaskOk.textContent = "同步中...";
+      try {
+        const res = await RequestApi.saveAutoTasks(JSON.stringify(newTasks));
+        if (res === "OK") {
+          ui.hideModal(confirmQuickTaskModal);
+          ui.hideModal(autoModal);
+          closeFileSheet();
+          window.SKInputSimulator.replaceTasks(newTasks);
+          app.openAutoSheet();
+        }
+      } catch (e) {
+        alert("同步至服务器失败，请检查网络");
+      } finally {
+        confirmQuickTaskOk.disabled = false;
+        confirmQuickTaskOk.textContent = "确定覆盖";
+      }
+    }
+  }
+
+  async function copyPreparedFileAndContinue() {
+    if (!pendingPreparedFile || !pendingPreparedFile.needsCopy) return;
+    const srcFile = pendingPreparedFile.sourceFile;
+    const dstFile = pendingPreparedFile.resolvedFile;
+    const copyCmd = `cp -f ${window.SKTerminalCore.shellQuote(srcFile)} ${window.SKTerminalCore.shellQuote(dstFile)}`;
+    execMountConfirm.disabled = true;
+    execMountConfirm.textContent = "拷贝中...";
+    try {
+      await executeImmediateCommand(copyCmd);
+      const adbMountState = await RequestApi.checkExecMount(window.SKTerminalCore.getPathDir(dstFile));
+      if (pendingPreparedFile.fileType !== "shell_script" && adbMountState !== "can exec") {
+        throw new Error("拷贝完成，但 /data/adb 仍然不可执行，请检查系统环境");
+      }
+      pendingPreparedFile = {
+        ...pendingPreparedFile,
+        needsCopy: false,
+      };
+      ui.hideModal(execMountModal);
+      showPreparedModal();
+    } catch (e) {
+      alert(e.message || "拷贝失败，请稍后重试");
     } finally {
-      confirmOk.disabled = false;
-      confirmOk.textContent = "确定覆盖";
+      execMountConfirm.disabled = false;
+      execMountConfirm.textContent = "一键拷贝并继续";
     }
   }
 
@@ -157,18 +287,8 @@
   fileClose.onclick = closeFileSheet;
 
   actionCancel.onclick = () => ui.hideModal(actionModal);
-  actExec.onclick = () => {
-    ui.hideModal(actionModal);
-    execCode.textContent = currentFile;
-    argInput.value = "";
-    ui.showModal(execModal);
-  };
-  actAuto.onclick = () => {
-    ui.hideModal(actionModal);
-    autoCode.textContent = currentFile;
-    autoArgInput.value = "";
-    ui.showModal(autoModal);
-  };
+  actExec.onclick = () => prepareAndOpenFlow("exec");
+  actAuto.onclick = () => prepareAndOpenFlow("simulator");
   actRename.onclick = () => {
     ui.hideModal(actionModal);
     renameOldName.textContent = currentFile;
@@ -183,30 +303,23 @@
   };
 
   execCancel.onclick = () => ui.hideModal(execModal);
-  execConfirm.onclick = () => {
-    let finalCmd;
-    try {
-      finalCmd = window.SKTerminalCore.buildShCommand(currentFile, argInput.value);
-    } catch (e) {
-      alert(e.message || "参数格式错误");
-      return;
-    }
-    ui.hideModal(execModal);
-    closeFileSheet();
-    cmd.value = finalCmd;
-    app.sendCommand();
+  execConfirm.onclick = async () => {
+    await submitPreparedCommand();
   };
 
   autoCancel.onclick = () => ui.hideModal(autoModal);
-  autoConfirm.onclick = () => {
-    const tasks = window.SKInputSimulator?.getTasks?.() || [];
-    const hasContent = tasks.length > 0 && tasks[0].cmd && tasks[0].cmd.trim() !== "";
-    if (hasContent) ui.showModal(confirmModal);
-    else performTransfer();
+  autoConfirm.onclick = async () => {
+    await submitPreparedCommand();
   };
 
-  confirmCancel.onclick = () => ui.hideModal(confirmModal);
-  confirmOk.onclick = () => performTransfer();
+  confirmQuickTaskCancel.onclick = () => ui.hideModal(confirmQuickTaskModal);
+  confirmQuickTaskOk.onclick = () => submitPreparedCommand({ skipConfirm: true });
+
+  execMountCancel.onclick = () => {
+    ui.hideModal(execMountModal);
+    clearPendingPreparedFile();
+  };
+  execMountConfirm.onclick = () => copyPreparedFileAndContinue();
 
   renameCancel.onclick = () => ui.hideModal(renameModal);
   renameConfirm.onclick = () => {
@@ -230,7 +343,6 @@
     ui.hideModal(deleteModal);
     closeFileSheet();
     
-    // 填入输入框并直接发射
     cmd.value = finalCmd;
     app.sendCommand();
   };

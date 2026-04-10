@@ -8,6 +8,7 @@
   const fileBtn = document.getElementById("fileBtn");
   const autoBtn = document.getElementById("autoBtn");
   const sheetOverlay = document.getElementById("sheetOverlay");
+  const inlineTip = document.getElementById("inlineTip");
 
   const terminalCore = window.SKTerminalCore?.createTerminalCore({
     out,
@@ -29,12 +30,23 @@
     }).join('');
   }
 
+  function updateInlineTip() {
+    if (!inlineTip) return;
+    const typing = !!(cmd.value || "").trim();
+    const text = (out.textContent || "")
+    .replace(/\u00a0/g, " ")
+    .trim();
+    const onlyPrompt = text === "#" || text === "";
+    inlineTip.classList.toggle("hidden", typing || !onlyPrompt);
+  }
+
   async function sendCommand() {
     const v = (cmd.value || "").trim();
     if (!v) return;
     terminalCore.appendLine("# " + v, true);
     cmd.value = "";
     cmd.focus();
+    updateInlineTip();
     sendBtn.disabled = true;
     try {
       await RequestApi.sendCommand(v);
@@ -58,6 +70,7 @@
       fileBtn,
       autoBtn,
       sheetOverlay,
+      inlineTip,
     },
     refreshHistory,
     sendCommand,
@@ -77,6 +90,7 @@
     if (chip && chip.dataset.cmd) {
       cmd.value = chip.dataset.cmd;
       cmd.focus();
+      updateInlineTip();
     }
   });
 
@@ -88,10 +102,12 @@
   });
 
   sendBtn.addEventListener("click", sendCommand);
+  cmd.addEventListener("input", updateInlineTip);
 
   terminalCore.appendLine("#", true);
   terminalCore.setConn(null, "连接中");
   refreshHistory();
+  updateInlineTip();
   cmd.focus();
   setInterval(terminalCore.tick, 1000);
 })();

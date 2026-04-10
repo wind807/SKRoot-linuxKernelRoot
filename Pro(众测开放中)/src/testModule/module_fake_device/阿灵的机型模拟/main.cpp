@@ -1,0 +1,64 @@
+﻿#include <sys/wait.h>
+#include "kernel_module_kit_umbrella.h"
+
+static void android_open_url(const std::string& url) {
+    std::string cmd = "am start -a android.intent.action.VIEW -d " + url;
+    FILE * fp = popen(cmd.c_str(), "r");
+    if(fp) pclose(fp);
+}
+
+static void run_script(const char* script) {
+    const char* sh = "/system/bin/sh";
+    char* const argv[] = {
+        (char*)sh,
+        (char*)script,
+        nullptr
+    };
+    execve(sh, argv, environ);
+}
+
+// SKRoot模块入口函数
+int skroot_module_main(const char* root_key, const char* module_private_dir) {
+    std::string sh;
+    kernel_module::read_string_disk_storage("sh", sh);
+    printf("*******************************\n");
+    printf(" 全局模拟机型: %s\n", sh.c_str());
+    printf("   阿灵\n");
+    printf("*******************************\n");
+    if(sh.empty()) return 0;
+    pid_t pid = ::fork();
+    if (pid == 0) {
+        run_script(sh.c_str());
+        _exit(127);
+    }
+    int status; waitpid(pid, &status, 0);
+    return 0;
+}
+
+std::string module_on_install(const char* root_key, const char* module_private_dir) {
+    android_open_url("tg://resolve?domain=ALING521");
+    return "";
+}
+
+// WebUI HTTP服务器回调函数
+class MyWebHttpHandler : public kernel_module::WebUIHttpHandler { // HTTP服务器基于civetweb库
+public:
+    // 这里的Web服务器仅起到读取、保存配置文件的作用。
+    bool handlePost(CivetServer* server, struct mg_connection* conn, const std::string& path, const std::string& body) override {
+        std::string resp;
+        if(path == "/getCurrentSh") kernel_module::read_string_disk_storage("sh", resp);
+        else if(path == "/setCurrentSh") resp = is_ok(kernel_module::write_string_disk_storage("sh", body.c_str())) ? "OK" : "FAILED";
+        kernel_module::webui::send_text(conn, 200, resp);
+        return true;
+    }
+};
+
+// SKRoot 模块名片
+SKROOT_MODULE_NAME("阿灵的机型模拟")
+SKROOT_MODULE_VERSION("5.2.0")
+SKROOT_MODULE_DESC("需要手动选择模拟机型，TG频道:@Whitelist520")
+SKROOT_MODULE_AUTHOR("阿灵")
+SKROOT_MODULE_UUID32("z2rYhJP0gOTKK9lYmXS9sanxw6cIZGYD")
+SKROOT_MODULE_ON_INSTALL(module_on_install)
+SKROOT_MODULE_WEB_UI(MyWebHttpHandler)
+SKROOT_MODULE_UPDATE_JSON("https://abcz316.github.io/SKRoot-linuxKernelRoot/module_fake_device/aling_fake_dev_update.json")

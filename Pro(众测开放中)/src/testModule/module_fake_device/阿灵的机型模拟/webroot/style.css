@@ -1,0 +1,246 @@
+﻿* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f2f2f7;
+  color: #1c1c1e;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  padding: 20px 14px;
+}
+
+.wrap {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.panel {
+  overflow: hidden;
+  border-radius: 26px;
+  border: 1px solid rgba(60, 60, 67, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.panel-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(0, 122, 255, 0.10);
+  background: linear-gradient(180deg, #f7faff 0%, #eef5ff 100%);
+}
+
+.panel-body {
+  padding: 14px 14px 16px;
+  background: #ffffff;
+}
+
+.top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8e8e93;
+}
+
+.title {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 122, 255, 0.10);
+  background: rgba(0, 122, 255, 0.08);
+  color: #007aff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.current-box {
+  display: none;
+}
+
+.current-main {
+  display: none;
+}
+
+.current-code {
+  display: none;
+}
+
+.search-input {
+  width: 100%;
+  border: 1px solid rgba(0, 122, 255, 0.12);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  color: #111111;
+  padding: 13px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  outline: none;
+  transition: 0.18s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.search-input:focus {
+  border-color: rgba(0, 122, 255, 0.28);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.08);
+}
+
+.search-input::placeholder {
+  color: #a1a1aa;
+}
+
+.sub-row {
+  display: none;
+}
+
+.list-area {
+  margin-top: 14px;
+  height: 440px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.list-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.list-area::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+}
+
+.brand-group + .brand-group {
+  margin-top: 0;
+}
+
+.brand-title {
+  display: none;
+}
+
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 16px;
+  border: 1px solid rgba(60, 60, 67, 0.08);
+  background: #ffffff;
+  padding: 15px 16px;
+  color: #1c1c1e;
+  cursor: pointer;
+  transition: 0.18s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.model-item:hover {
+  background: #ffffff;
+  border-color: rgba(60, 60, 67, 0.14);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.model-item.active {
+  border-color: rgba(0, 122, 255, 0.24);
+  background: rgba(0, 122, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.06);
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+
+.model-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.35;
+}
+
+.model-code {
+  display: none;
+}
+
+.tag {
+  display: none;
+}
+
+.model-item.active .tag {
+  display: none;
+}
+
+.empty {
+  border-radius: 18px;
+  border: 1px dashed rgba(60, 60, 67, 0.12);
+  background: #fafafd;
+  text-align: center;
+  padding: 42px 16px;
+  color: #8e8e93;
+  font-size: 14px;
+}
+
+.panel-footer {
+  padding: 14px;
+  border-top: 1px solid rgba(60, 60, 67, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.tip-box {
+  display: none;
+}
+
+.save-btn {
+  width: 100%;
+  margin-top: 0;
+  border: none;
+  background: #007aff;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: 0.18s ease;
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.20);
+}
+
+.save-btn:hover {
+  filter: brightness(0.98);
+}
+
+.save-btn:disabled {
+  opacity: 0.72;
+  cursor: default;
+}
+
+@media (max-width: 420px) {
+  body { padding: 12px 10px; }
+  .title { font-size: 20px; }
+  .list-area { height: 56vh; }
+}

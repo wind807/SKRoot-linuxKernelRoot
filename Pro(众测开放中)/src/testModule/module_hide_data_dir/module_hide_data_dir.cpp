@@ -63,10 +63,6 @@ int skroot_module_main(const char* root_key, const char* module_private_dir) {
 // WebUI HTTP服务器回调函数
 class MyWebHttpHandler : public kernel_module::WebUIHttpHandler { // HTTP服务器基于civetweb库
 public:
-    void onPrepareCreate(const char* root_key, const char* module_private_dir, uint32_t port) override {
-        m_root_key = root_key;
-    }
-
     // 这里的Web服务器仅起到读取、保存配置文件的作用。
     bool handlePost(CivetServer* server, struct mg_connection* conn, const std::string& path, const std::string& body) override {
         printf("[module_hide_data_dir] POST request\nPath: %s\nBody: %s\n", path.c_str(), body.c_str());
@@ -79,8 +75,6 @@ public:
         kernel_module::webui::send_text(conn, 200, resp);
         return true;
     }
-private:
-    std::string m_root_key;
 };
 
 // SKRoot 模块名片

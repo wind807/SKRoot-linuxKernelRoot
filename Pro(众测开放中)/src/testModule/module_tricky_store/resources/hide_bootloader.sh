@@ -1,16 +1,17 @@
 #!/system/bin/sh
 check_reset_prop() {
-  local NAME=$1
-  local EXPECTED=$2
-  local VALUE=$(resetprop $NAME)
-  [ -z $VALUE ] || [ $VALUE = $EXPECTED ] || resetprop $NAME $EXPECTED
+  local NAME="$1"
+  local EXPECTED="$2"
+  local VALUE
+  VALUE="$(resetprop "$NAME")"
+  [ -z "$VALUE" ] || [ "$VALUE" = "$EXPECTED" ] || resetprop "$NAME" "$EXPECTED"
 }
 
 contains_reset_prop() {
-  local NAME=$1
-  local CONTAINS=$2
-  local NEWVAL=$3
-  [[ "$(resetprop $NAME)" = *"$CONTAINS"* ]] && resetprop $NAME $NEWVAL
+  local NAME="$1"
+  local CONTAINS="$2"
+  local NEWVAL="$3"
+  [[ "$(resetprop "$NAME")" == *"$CONTAINS"* ]] && resetprop "$NAME" "$NEWVAL"
 }
 
 resetprop -w sys.boot_completed 0
