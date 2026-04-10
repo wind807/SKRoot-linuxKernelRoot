@@ -38,7 +38,7 @@
               type="text"
               autocomplete="off"
               spellcheck="false"
-              placeholder="输入命令，例如：id / getprop / ls -al"
+              placeholder="输入命令，空内容代表回车"
             />
           </div>
           <button class="btn" id="sendBtn" type="button">
@@ -193,7 +193,7 @@
     <div class="modal-title">当前目录不可直接执行</div>
     <div class="modal-body">
       <div class="modal-desc">
-        当前文件所在目录不能运行。是否先帮你拷贝到 <strong>/data/adb</strong>，再继续执行？
+        当前文件所在目录不能运行。是否先帮你拷贝到 <strong>隐藏目录</strong>，再继续执行？
       </div>
       <div class="code-preview modal-code-compact" id="execMountTarget"></div>
     </div>

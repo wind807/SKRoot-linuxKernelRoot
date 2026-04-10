@@ -41,9 +41,9 @@
   }
 
   async function sendCommand() {
-    const v = (cmd.value || "").trim();
-    if (!v) return;
-    terminalCore.appendLine("# " + v, true);
+    const raw = cmd.value || "";
+    const v = raw.trim();
+    terminalCore.appendLine("# " + (v || "[ENTER]"), true);
     cmd.value = "";
     cmd.focus();
     updateInlineTip();
@@ -58,7 +58,7 @@
       terminalCore.scrollBottom();
     }
   }
-
+  
   const app = {
     elements: {
       out,

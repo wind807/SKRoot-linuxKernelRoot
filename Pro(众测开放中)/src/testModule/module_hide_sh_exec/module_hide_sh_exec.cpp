@@ -7,6 +7,7 @@
 #include <ctime>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/xattr.h>
 #include <cerrno>
 #include <cstring>
 
@@ -17,6 +18,7 @@
 #include "json_helper.h"
 #include "url_encode_utils.h"
 
+#define WORK_DIR_NAME "work"
 #define MAX_QUICK_ACTIONS 10
 #define RECORD_CMD_LEN 100
 
@@ -58,8 +60,18 @@ static std::string read_quick_actions_json() {
     return json;
 }
 
+static void create_work_dir(const char* module_private_dir) {
+    fs::path work_dir = fs::path(module_private_dir) / WORK_DIR_NAME;
+    std::error_code ec;
+    fs::create_directories(work_dir, ec);
+    ::chmod(work_dir.c_str(), 0777);
+    const char* selinux_flag = "u:object_r:system_file:s0";
+    ::setxattr(work_dir.c_str(), XATTR_NAME_SELINUX, selinux_flag, std::strlen(selinux_flag) + 1, 0);
+}
+
 std::string module_on_install(const char* root_key, const char* module_private_dir) {
     add_quick_actions({"getenforce", "ls /", "id"});
+    create_work_dir(module_private_dir);
     return "";
 }
 
@@ -82,6 +94,7 @@ class MyWebHttpHandler : public kernel_module::WebUIHttpHandler {
 public:
     void onPrepareCreate(const char* root_key, const char* module_private_dir, uint32_t port) override {
         m_root_key = root_key;
+        m_hidden_dir = (fs::path(module_private_dir) / WORK_DIR_NAME).string();
         m_su_interactive.start();
         fork_sh_process_daemon();
         m_idle_killer.start(std::chrono::seconds(30), [this] {
@@ -98,6 +111,7 @@ public:
         else if(path == "/listDir") resp = handle_list_dir(body);
         else if(path == "/getAutoTasks") resp = handle_get_auto_tasks();
         else if(path == "/saveAutoTasks") resp = handle_save_auto_tasks(body);
+        else if(path == "/getHideDir") resp = handle_get_hide_dir();
         else if(path == "/checkFileType") resp = handle_check_file_type(body);
         else if(path == "/checkExecMount") resp = handle_check_exec_mount(body);
 
@@ -126,7 +140,7 @@ private:
 
     std::string handle_send_command(const std::string& body) {
         m_idle_killer.touch();
-        if(body.empty() || body == "su") return "OK";
+        if(body == "su") return "OK";
         m_su_interactive.sendLine(body);
         if (!body.empty() && body.length() < RECORD_CMD_LEN) {
             add_quick_actions({body});
@@ -214,6 +228,8 @@ private:
         return "OK";
     }
 	
+    std::string handle_get_hide_dir() { return m_hidden_dir; }
+	
 	std::string handle_check_file_type(const std::string& filepath) {
         m_idle_killer.touch();
         if (filepath.empty()) return "unknown";
@@ -250,13 +266,14 @@ private:
     }
 private:
     std::string m_root_key;
+    std::string m_hidden_dir;
     SuInteractive m_su_interactive;
     IdleKiller m_idle_killer;
 };
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("隐蔽的系统终端")
-SKROOT_MODULE_VERSION("3.0.3")
+SKROOT_MODULE_VERSION("3.0.4")
 SKROOT_MODULE_DESC("提供独立隐蔽的 sh 执行通道，彻底替代终端类 App，避免终端类 App 带来的特征暴露。")
 SKROOT_MODULE_AUTHOR("SKRoot")
 SKROOT_MODULE_UUID32("zse9vkTjLjWXbafvx8Mlh1MTf8SMTUEL")

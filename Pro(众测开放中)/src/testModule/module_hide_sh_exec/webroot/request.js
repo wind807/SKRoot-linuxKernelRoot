@@ -54,6 +54,11 @@
     return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
   }
 
+  async function getHideDir() {
+    const resp = await postText('/getHideDir');
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
+
   async function checkFileType(filePath) {
     const resp = await postText('/checkFileType', filePath);
     return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
@@ -71,6 +76,7 @@
     listDir,
     getAutoTasks,
     saveAutoTasks,
+    getHideDir,
     checkFileType,
     checkExecMount
   };

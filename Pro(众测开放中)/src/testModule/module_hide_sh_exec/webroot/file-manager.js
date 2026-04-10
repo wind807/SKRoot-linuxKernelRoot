@@ -56,6 +56,7 @@
   let currentFile = null;
   let pendingMode = null;
   let pendingPreparedFile = null;
+  let hideDirCache = "";
 
   async function loadDir(path) {
     currentPath = path || "/sdcard";
@@ -110,8 +111,19 @@
     return String(filePath || "").split('/').pop() || "";
   }
 
-  function getAdbCopiedPath(filePath) {
-    return ui.joinPath("/data/adb", getFileBaseName(filePath));
+  async function getHideDir() {
+    if (hideDirCache) return hideDirCache;
+    const dir = String(await RequestApi.getHideDir() || "").trim();
+    if (!dir || /^HTTP\s+\d+/i.test(dir)) {
+      throw new Error("获取隐藏目录失败，请稍后重试");
+    }
+    hideDirCache = dir;
+    return hideDirCache;
+  }
+
+  async function getCopiedTargetPath(filePath) {
+    const hideDir = await getHideDir();
+    return ui.joinPath(hideDir, getFileBaseName(filePath));
   }
 
   function clearPendingPreparedFile() {
@@ -125,7 +137,7 @@
       const dir = window.SKTerminalCore.getPathDir(filePath);
       const mountState = await RequestApi.checkExecMount(dir);
       if (mountState === "can exec") return { sourceFile: filePath, resolvedFile: filePath, fileType, needsCopy: false, };
-      if (mountState === "can not exec") return { sourceFile: filePath, resolvedFile: getAdbCopiedPath(filePath), fileType, needsCopy: true, };
+      if (mountState === "can not exec") return { sourceFile: filePath, resolvedFile: await getCopiedTargetPath(filePath), fileType, needsCopy: true, };
       throw new Error("执行目录检测结果异常：" + (mountState || "未知"));
     }
     throw new Error("当前文件不支持直接执行：" + (fileType || "未知类型"));
@@ -154,7 +166,8 @@
       pendingPreparedFile = prepared;
       ui.hideModal(actionModal);
       if (prepared.needsCopy) {
-        execMountTarget.textContent = `${prepared.sourceFile} → ${prepared.resolvedFile}`;
+        execMountTarget.innerHTML = `<div class="modal-path-from">当前文件：${ui.safeHtml(prepared.sourceFile)}</div>
+<div class="modal-path-to">将复制到：${ui.safeHtml(prepared.resolvedFile)}</div>`;
         ui.showModal(execMountModal);
         return;
       }
@@ -243,7 +256,7 @@
       await executeImmediateCommand(copyCmd);
       const adbMountState = await RequestApi.checkExecMount(window.SKTerminalCore.getPathDir(dstFile));
       if (pendingPreparedFile.fileType !== "shell_script" && adbMountState !== "can exec") {
-        throw new Error("拷贝完成，但 /data/adb 仍然不可执行，请检查系统环境");
+        throw new Error("拷贝完成，但隐藏目录仍然不可执行，请检查系统环境");
       }
       pendingPreparedFile = {
         ...pendingPreparedFile,

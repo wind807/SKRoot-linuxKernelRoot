@@ -659,3 +659,15 @@ input.auto-cmd:focus, input.auto-delay:focus { border-color: var(--accent); back
   font-size: 13px;
   line-height: 1.5;
 }
+
+.modal-path-from,
+.modal-path-to {
+  font-size: 12px;
+  color: #8e8e93;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.modal-path-to {
+  margin-top: 2px;
+}
