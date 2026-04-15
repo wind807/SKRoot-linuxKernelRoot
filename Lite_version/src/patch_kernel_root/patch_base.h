@@ -7,8 +7,16 @@
 #include "analyze/symbol_analyze.h"
 #include "analyze/init_cred_searcher.h"
 
+#define THREAD_SIZE 0x4000
+
 struct huawei_extra {
 	uint64_t kti_addr = 0;
+};
+
+struct thread_info {
+	uint64_t flags;
+	uint64_t addr_limit;
+	uint64_t task;
 };
 
 class PatchBase {

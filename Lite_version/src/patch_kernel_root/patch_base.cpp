@@ -5,15 +5,6 @@ using namespace asmjit;
 using namespace asmjit::a64;
 using namespace asmjit::a64::Predicate;
 
-namespace {
-	constexpr uint64_t kThreadSize = 0x4000;
-	struct thread_info {
-		uint64_t flags;
-		uint64_t addr_limit;
-		uint64_t task;
-	};
-}
-
 PatchBase::PatchBase(const std::vector<char>& file_buf, size_t cred_uid_offset, const huawei_extra& huawei) :
 	m_file_buf(file_buf), 
 	m_kernel_ver_parser(file_buf), 
@@ -113,7 +104,7 @@ void PatchBase::emit_get_current(Assembler* a, GpX x) {
 	}
 
 	a->mov(x, sp);
-	a->and_(x, x, Imm((uint64_t)~(kThreadSize - 1)));
+	a->and_(x, x, Imm((uint64_t)~(THREAD_SIZE - 1)));
 	a->ldr(x, ptr(x, offsetof(thread_info, task)));
 }
 

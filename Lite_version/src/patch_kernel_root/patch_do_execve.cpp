@@ -102,19 +102,25 @@ size_t PatchDoExecve::patch_do_execve(const SymbolRegion& hook_func_start_region
 	if (cap_cnt >= 5) {
 		a->str(x13, ptr(x14).post(8));
 	}
-	if (!is_CONFIG_THREAD_INFO_IN_TASK() && !is_CURRENT_FROM_SP_EL0_THREAD_INFO()) {
+
+	a->mov(x15, Imm((uint64_t)1ULL << TIF_SECCOMP));
+	if (is_CONFIG_THREAD_INFO_IN_TASK()) {
+		a->ldaxr(x14, ptr(x12, offsetof(thread_info, flags)));
+		a->bic(x14, x14, x15);
+		a->stlxr(w15, x14, ptr(x12, offsetof(thread_info, flags)));
+	} else if (is_CURRENT_FROM_SP_EL0_THREAD_INFO()) {
 		uint32_t sp_el0_id = SysReg::encode(3, 0, 4, 1, 0);
 		a->mrs(x13, sp_el0_id);
-		a->and_(x13, x13, Imm((uint64_t)~(0x4000 - 1)));
-		a->ldaxr(x14, ptr(x13));
-		a->mov(x15, Imm((uint64_t)1ULL << TIF_SECCOMP));
+		emit_huawei_kti_add(a, x13);
+		a->ldaxr(x14, ptr(x13, offsetof(thread_info, flags)));
 		a->bic(x14, x14, x15);
-		a->stlxr(x15, x14, ptr(x13));
+		a->stlxr(w15, x14, ptr(x13, offsetof(thread_info, flags)));
 	} else {
-		a->ldaxr(x14, ptr(x12));
-		a->mov(x15, Imm((uint64_t)1ULL << TIF_SECCOMP));
+		a->mov(x13, sp);
+		a->and_(x13, x13, Imm((uint64_t)~(THREAD_SIZE - 1)));
+		a->ldaxr(x14, ptr(x13, offsetof(thread_info, flags)));
 		a->bic(x14, x14, x15);
-		a->stlxr(x15, x14, ptr(x12));
+		a->stlxr(w15, x14, ptr(x13, offsetof(thread_info, flags)));
 	}
 	a->str(wzr, ptr(x12, task_struct_seccomp_offset));
 	a->bind(label_end);
