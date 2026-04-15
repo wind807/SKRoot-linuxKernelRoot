@@ -15,35 +15,38 @@ PatchDoExecve::PatchDoExecve(const PatchBase& patch_base, const KernelSymbolOffs
 PatchDoExecve::~PatchDoExecve() {}
 
 void PatchDoExecve::init_do_execve_param(const KernelSymbolOffset& sym) {
-	auto set_execve_param = [this](uint32_t addr, uint8_t filename_reg, bool is_single_char_ptr) {
-		if (addr == 0) {
-			return false;
-		}
-		m_doexecve_reg_param.do_execve_addr = addr;
-		m_doexecve_reg_param.do_execve_filename_reg = filename_reg;
-		m_doexecve_reg_param.is_single_char_ptr = is_single_char_ptr;
+	struct ExecveCandidate {
+		SymbolRegion execve_sym;
+		uint8_t filename_reg = 0;
+		bool is_single_char_ptr = false;
+	};
+	auto set_execve_param = [this](const ExecveCandidate& c) {
+		if (!c.execve_sym || c.execve_sym.size == 0) return false;
+		m_doexecve_reg_param.do_execve_addr = static_cast<uint32_t>(c.execve_sym.offset);
+		m_doexecve_reg_param.do_execve_filename_reg = c.filename_reg;
+		m_doexecve_reg_param.is_single_char_ptr = c.is_single_char_ptr;
 		return true;
 	};
-
+	ExecveCandidate best{};
+	auto try_update_best = [&best](SymbolRegion execve_sym, uint8_t filename_reg, bool is_single_char_ptr) {
+		if (!execve_sym || execve_sym.size == 0) return;
+		if (!best.execve_sym || execve_sym.size > best.execve_sym.size) {
+			best.execve_sym = execve_sym;
+			best.filename_reg = filename_reg;
+			best.is_single_char_ptr = is_single_char_ptr;
+		}
+	};
 	if (m_kernel_ver_parser.is_kernel_version_less("3.14.0")) {
-		set_execve_param(sym.do_execve_common, 0, true);
+		try_update_best(sym.do_execve_common, 0, true);
+		try_update_best(sym.do_execve, 0, true);
+	} else {
+		try_update_best(sym.__do_execve_file, 1, false);
+		try_update_best(sym.do_execveat_common, 1, false);
+		try_update_best(sym.do_execve, 0, false);
+		try_update_best(sym.do_execveat, 1, false);
+		try_update_best(sym.do_execve_common, 0, false);
 	}
-
-	if (m_doexecve_reg_param.do_execve_addr == 0) {
-		set_execve_param(sym.__do_execve_file, 1, false);
-	}
-	if (m_doexecve_reg_param.do_execve_addr == 0) {
-		set_execve_param(sym.do_execveat_common, 1, false);
-	}
-	if (m_doexecve_reg_param.do_execve_addr == 0) {
-		set_execve_param(sym.do_execve, 0, false);
-	}
-	if (m_doexecve_reg_param.do_execve_addr == 0) {
-		set_execve_param(sym.do_execveat, 1, false);
-	}
-	if (m_doexecve_reg_param.do_execve_addr == 0) {
-		set_execve_param(sym.do_execve_common, 0, false);
-	}
+	set_execve_param(best);
 	m_doexecve_reg_param.do_execve_addr = skip_pac_bti_at_func_start(m_doexecve_reg_param.do_execve_addr);
 }
 

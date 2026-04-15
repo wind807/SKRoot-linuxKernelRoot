@@ -21,11 +21,11 @@ struct KernelSymbolOffset {
 	SymbolRegion __drm_puts_coredump = { 0 };
 	SymbolRegion __drm_printfn_coredump = { 0 };
 
-	size_t __do_execve_file = 0;
-	size_t do_execveat_common = 0;
-	size_t do_execve_common = 0;
-	size_t do_execveat = 0;
-	size_t do_execve = 0;
+	SymbolRegion __do_execve_file = { 0 };
+	SymbolRegion do_execveat_common = { 0 };
+	SymbolRegion do_execve_common = { 0 };
+	SymbolRegion do_execveat = { 0 };
+	SymbolRegion do_execve = { 0 };
 
 	SymbolRegion avc_denied = { 0 };
 	size_t audit_log_start = { 0 };

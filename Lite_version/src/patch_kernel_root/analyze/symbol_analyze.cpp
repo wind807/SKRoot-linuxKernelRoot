@@ -50,17 +50,17 @@ bool SymbolAnalyze::find_symbol_offset() {
 	m_sym_offset.__drm_puts_coredump = find_region({ {"__drm_puts_coredump", false} });
 	m_sym_offset.__drm_printfn_coredump = find_region({ {"__drm_printfn_coredump", false} });
 
-	m_sym_offset.__do_execve_file = find_addr({{"__do_execve_file", false}});
-	m_sym_offset.do_execveat_common = find_addr({
+	m_sym_offset.__do_execve_file = find_region({{"__do_execve_file", false}});
+	m_sym_offset.do_execveat_common = find_region({
 		{"do_execveat_common", false}, 
 		{"do_execveat_common", true},
 		});
-	m_sym_offset.do_execve_common = find_addr({
+	m_sym_offset.do_execve_common = find_region({
 		{"do_execve_common", false},
 		{"do_execve_common", true},
 		});
-	m_sym_offset.do_execveat = find_addr({{"do_execveat", false}});
-	m_sym_offset.do_execve = find_addr({{"do_execve", false}});
+	m_sym_offset.do_execveat = find_region({{"do_execveat", false}});
+	m_sym_offset.do_execve = find_region({{"do_execve", false}});
 
 	m_sym_offset.avc_denied = find_region({
 		{"avc_denied", false},
@@ -111,11 +111,11 @@ void SymbolAnalyze::printf_symbol_offset() {
 	if (m_sym_offset.__drm_puts_coredump) std::cout << "__drm_puts_coredump:" << m_sym_offset.__drm_puts_coredump.offset << ", size:" << m_sym_offset.__drm_printfn_coredump.size << std::endl;
 	if (m_sym_offset.__drm_printfn_coredump) std::cout << "__drm_printfn_coredump:" << m_sym_offset.__drm_printfn_coredump.offset << ", size:" << m_sym_offset.__drm_printfn_coredump.size << std::endl;
 
-	std::cout << "__do_execve_file:" << m_sym_offset.__do_execve_file << std::endl;
-	std::cout << "do_execveat_common:" << m_sym_offset.do_execveat_common << std::endl;
-	std::cout << "do_execve_common:" << m_sym_offset.do_execve_common << std::endl;
-	std::cout << "do_execveat:" << m_sym_offset.do_execveat << std::endl;
-	std::cout << "do_execve:" << m_sym_offset.do_execve << std::endl;
+	std::cout << "__do_execve_file:" << m_sym_offset.__do_execve_file.offset << ", size:" << m_sym_offset.__do_execve_file.size << std::endl;
+	std::cout << "do_execveat_common:" << m_sym_offset.do_execveat_common.offset << ", size:" << m_sym_offset.do_execveat_common.size << std::endl;
+	std::cout << "do_execve_common:" << m_sym_offset.do_execve_common.offset << ", size:" << m_sym_offset.do_execve_common.size << std::endl;
+	std::cout << "do_execveat:" << m_sym_offset.do_execveat.offset << ", size:" << m_sym_offset.do_execveat.size << std::endl;
+	std::cout << "do_execve:" << m_sym_offset.do_execve.offset << ", size:" << m_sym_offset.do_execve.size << std::endl;
 
 	std::cout << "avc_denied:" << m_sym_offset.avc_denied.offset << ", size:" << m_sym_offset.avc_denied.size << std::endl;
 	std::cout << "audit_log_start:" << m_sym_offset.audit_log_start << std::endl;
