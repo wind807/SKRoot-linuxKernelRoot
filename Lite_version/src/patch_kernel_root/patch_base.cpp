@@ -97,7 +97,6 @@ bool PatchBase::is_CURRENT_FROM_SP_EL0_THREAD_INFO() {
 }
 
 void PatchBase::emit_get_current(Assembler* a, GpX x) {
-	Label label_error = a->newLabel();
 	uint32_t sp_el0_id = SysReg::encode(3, 0, 4, 1, 0);
 
 	if (is_CONFIG_THREAD_INFO_IN_TASK()) {
@@ -108,10 +107,8 @@ void PatchBase::emit_get_current(Assembler* a, GpX x) {
 
 	if (is_CURRENT_FROM_SP_EL0_THREAD_INFO()) {
 		a->mrs(x, sp_el0_id);
-		a->cbz(x, label_error);
 		emit_huawei_kti_add(a, x);
 		a->ldr(x, ptr(x, offsetof(thread_info, task)));
-		a->bind(label_error);
 		return;
 	}
 
@@ -192,7 +189,6 @@ void PatchBase::emit_huawei_kti_add(Assembler* a, GpX x) {
 		_exit(EXIT_FAILURE);
 	}
 	uint32_t lo12 = (uint32_t)(m_huawei_extra.kti_addr & 0xFFF);
-	if (lo12) {
-		a->ldr(x, ptr(x1, lo12));
-	}
+	a->ldr(x1, ptr(x1, lo12));
+	a->add(x, x, x1);
 }

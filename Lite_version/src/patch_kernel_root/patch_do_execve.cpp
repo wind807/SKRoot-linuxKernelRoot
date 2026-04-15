@@ -102,7 +102,7 @@ size_t PatchDoExecve::patch_do_execve(const SymbolRegion& hook_func_start_region
 	if (cap_cnt >= 5) {
 		a->str(x13, ptr(x14).post(8));
 	}
-	if (!is_CONFIG_THREAD_INFO_IN_TASK()) {
+	if (!is_CONFIG_THREAD_INFO_IN_TASK() && !is_CURRENT_FROM_SP_EL0_THREAD_INFO()) {
 		uint32_t sp_el0_id = SysReg::encode(3, 0, 4, 1, 0);
 		a->mrs(x13, sp_el0_id);
 		a->and_(x13, x13, Imm((uint64_t)~(0x4000 - 1)));
