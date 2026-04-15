@@ -11,10 +11,10 @@
 | **用途** | **稳定和兼容性**优先。 | **更深度的功能扩展**。 |
 | **功能** | **核心 Root 环境**。 | **授权管理 + 内核模块 + 免解越狱**。 |
 | **进阶** | - | 隐藏目录、隐蔽执行sh、解除温控、系统文件无痕伪造等。 |
-| **模块能力** | - | 支持**用户态、内核态随意切换**。<br>**自研内核Hook框架：0性能损耗、无侧信道痕迹**。<br>内核偏移**动态寻找**：真正**跨内核运行** 。 |
+| **模块能力** | - | 支持**用户态、内核态自由切换执行**。<br>**自研内核Hook框架：0性能损耗、无侧信道痕迹**。<br>内核偏移**动态寻找**：真正**跨内核运行** 。 |
 
 
-***SKRoot模块介绍**：可在用户态、内核态随意切换执行，比传统模块好，通用型强。内核偏移由开发sdk接口统一提供，一次编译，跨所有内核通用3.10~6.12。而且自带Hook框架，0性能损耗，无视侧信道检测*。
+***SKRoot模块介绍**：支持在用户态与内核态之间灵活切换，相比传统模块，更强更通用；内核偏移由开发 SDK 接口统一提供，一次编译即可跨所有内核通用（3.10~6.12）；同时自带 Hook 框架，0 性能损耗，无视侧信道检测。*
 
 ## 功能列表：
 1.测试ROOT权限
@@ -46,7 +46,7 @@
 2. 其中【**注入su到指定进程**】**只支持授权su到64位的APP**，老式32位App不再进行支持。
 
 ## SKRoot(Lite) 使用流程：
-1.下载源码编译或**下载编译产物**： [patch_kernel_root.exe](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.4.15c/patch_kernel_root.2026-4-15c.exe)、 [skroot_lite.apk](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.4.8/SKRoot_Lite.2026-4-8.apk)
+1.下载源码编译或**下载编译产物**： [patch_kernel_root.exe](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.4.16/patch_kernel_root.2026-4-16.exe)、 [skroot_lite.apk](https://github.com/abcz316/SKRoot-linuxKernelRoot/releases/download/Lite_v2026.4.8/SKRoot_Lite.2026-4-8.apk)
 
 2.将内核kernel文件拖拽置`patch_kernel_root.exe`即可一键自动化流程补丁内核，同时会自动生成Root密匙。
 

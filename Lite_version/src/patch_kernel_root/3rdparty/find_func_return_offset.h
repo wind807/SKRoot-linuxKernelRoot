@@ -54,7 +54,16 @@ namespace a64_find_func_return_offset {
 	}
 
 	static inline bool is_offset_jump_asm(const code_line& line) {
-		return line.cmd_id == ARM64_INS_B;
+		switch (line.cmd_id) {
+		case ARM64_INS_B:
+		case ARM64_INS_CBZ:
+		case ARM64_INS_CBNZ:
+		case ARM64_INS_TBZ:
+		case ARM64_INS_TBNZ:
+			return true;
+		default:
+			return false;
+		}
 	}
 
 	static inline bool is_force_jump_asm(const code_line& line) {
