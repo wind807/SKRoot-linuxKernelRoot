@@ -78,9 +78,9 @@ bool is_syscall_args_in_ptregs();
  * 说明: 因部分手机内核对avc_denied有特殊保护，不可直接 Hook，Skroot在这里提供一个特殊内核地址，可绕过厂商的特殊保护。
  * 
  * 参数: func_entry_kaddr            输出 avc_denied 内核地址
- *      before_ret_can_hook_addr    输出 avc_denied return 前可安装HOOK的地址
+ *      ret_after_can_hook_kaddr    输出 avc_denied ret 前可安装HOOK的地址
  * 返回: OK 表示成功；其它值为错误码
  ***************************************************************************/
-KModErr get_avc_denied_kaddr(uint64_t & func_entry_kaddr, uint64_t & before_ret_can_hook_kaddr);
+KModErr get_avc_denied_kaddr(uint64_t & func_entry_kaddr, uint64_t & ret_after_can_hook_kaddr);
 
 }

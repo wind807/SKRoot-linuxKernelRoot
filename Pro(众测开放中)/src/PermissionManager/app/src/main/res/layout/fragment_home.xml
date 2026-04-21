@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -24,7 +25,7 @@
         android:layout_marginTop="10dp"
         android:layout_width="match_parent"
         android:layout_height="2dp"
-        android:background="#ff00ff"
+        android:background="@color/pink"
         />
 
     <LinearLayout
@@ -46,70 +47,122 @@
                 >
 
                 <TextView
-                    android:layout_marginTop="5dp"
+                    android:layout_marginTop="6dp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SKRoot  基础环境："
+                    android:text="SKRoot基础环境："
                     android:textColor="@color/black"
                     />
 
-
-                <Button
-                    android:layout_marginTop="5dp"
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/install_skroot_env_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="安装SKRoot环境"
-                    />
+                    app:cornerRadius="8dp"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    style="@style/Widget.MaterialComponents.Button" />
 
-                <Button
-                    android:layout_marginTop="5dp"
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/uninstall_skroot_env_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="卸载SKRoot环境"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    app:cornerRadius="8dp"
+                    style="@style/Widget.MaterialComponents.Button"
                     />
 
-
-                <View
-                    android:layout_marginTop="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="2dp"
-                    android:background="#ff00ff"
-                    />
                 <TextView
                     android:layout_marginTop="10dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="系统基础环境："
+                    android:textColor="@color/black"
+                    />
+                <TextView
+                    android:id="@+id/tv_selinux_status"
+                    android:layout_marginTop="2dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SELinux状态：检测中..."
+                    android:textColor="@color/black"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    />
+
+                <TextView
+                    android:id="@+id/tv_seccomp_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Seccomp状态：检测中..."
+                    android:textColor="@color/black"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    />
+
+                <TextView
+                    android:id="@+id/tv_adb_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Adb状态：检测中..."
+                    android:textColor="@color/black"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    />
+                <View
+                    android:layout_marginTop="14dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="@color/pink"
+                    />
+                <TextView
+                    android:layout_marginTop="6dp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="基本功能菜单："
                     android:textColor="@color/black"
                     />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:layout_marginTop="5dp"
                     android:id="@+id/test_root_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="1.测试Root权限"
-
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    app:cornerRadius="8dp"
+                    style="@style/Widget.MaterialComponents.Button"
                     />
 
-                <Button
-                    android:layout_marginTop="5dp"
+                <com.google.android.material.button.MaterialButton
+                    android:layout_marginTop="4dp"
                     android:id="@+id/run_root_cmd_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="2.执行Root命令"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    app:cornerRadius="8dp"
+                    style="@style/Widget.MaterialComponents.Button"
                     />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/implant_app_btn"
-                    android:layout_marginTop="5dp"
+                    android:layout_marginTop="4dp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:enabled="false"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
                     android:text="3.寄生 (即将上线)"
+                    app:cornerRadius="8dp"
+                    style="@style/Widget.MaterialComponents.Button"
                     />
+
             </LinearLayout>
 
         </ScrollView>
@@ -118,7 +171,7 @@
             android:layout_height="match_parent"
             android:layout_marginLeft="5dp"
             android:layout_marginRight="5dp"
-            android:background="#ff00ff"
+            android:background="@color/pink"
             />
 
         <LinearLayout
@@ -141,18 +194,23 @@
                 android:orientation="horizontal"
 
                 >
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/copy_info_btn"
                     android:layout_width="70dp"
                     android:layout_height="wrap_content"
                     android:text="复制"
+                    app:cornerRadius="8dp"
+                    style="@style/Widget.MaterialComponents.Button"
                     />
-                <Button
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/clean_info_btn"
                     android:layout_width="70dp"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="5dp"
                     android:text="清空"
+                    app:cornerRadius="8dp"
+                    style="@style/Widget.MaterialComponents.Button"
                     />
             </LinearLayout>
 

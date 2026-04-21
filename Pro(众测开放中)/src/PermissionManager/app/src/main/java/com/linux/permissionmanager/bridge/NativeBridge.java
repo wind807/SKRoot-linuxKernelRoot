@@ -6,6 +6,7 @@ public final class NativeBridge {
     public static native String installSkrootEnv(String rootKey, boolean isHotload);
     public static native String uninstallSkrootEnv(String rootKey);
     public static native String getSkrootEnvState(String rootKey);
+    public static native String getSystemStatusJson();
     public static native String getInstalledSkrootEnvVersion(String rootKey);
     public static native String getSdkVersion();
     

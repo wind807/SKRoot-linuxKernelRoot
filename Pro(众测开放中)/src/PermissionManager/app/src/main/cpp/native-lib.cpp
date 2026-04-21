@@ -12,6 +12,7 @@
 #include "kernel_module_kit_umbrella.h"
 
 #include "urlEncodeUtils.h"
+#include "sysNodeHelper.h"
 #include "cJSON.h"
 
 using namespace std;
@@ -100,6 +101,16 @@ Java_com_linux_permissionmanager_bridge_NativeBridge_getSkrootEnvState(
     };
 	SkrootEnvState state = get_skroot_environment_state(strRootKey.c_str());
     return env->NewStringUTF(m[state]);
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_linux_permissionmanager_bridge_NativeBridge_getSystemStatusJson(JNIEnv* env, jclass /* this */) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "selinux", get_selinux_enforce_status());
+    cJSON_AddNumberToObject(root, "seccomp", get_seccomp_status());
+    cJSON_AddBoolToObject(root, "adb", is_enable_adb());
+    std::string json = cJSON_Print(root);
+    cJSON_Delete(root);
+    return env->NewStringUTF(json.c_str());
 }
 
 extern "C" JNIEXPORT jstring JNICALL

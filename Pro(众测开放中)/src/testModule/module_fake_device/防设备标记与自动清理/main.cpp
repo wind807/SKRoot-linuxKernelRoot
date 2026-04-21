@@ -234,7 +234,7 @@ static void register_sigusr1() {
 int skroot_module_main(const char* root_key, const char* module_private_dir) {
     g_empty_dir = fs::path(module_private_dir) / kPrivateDirName;
     persist_data_unlock(g_empty_dir);
-    spawn_delayed_task(5, [=] {
+    fork_delayed_task(5, [=] {
         register_sigusr1();
         persist_data_unlock(g_empty_dir);
         daemon_loop();

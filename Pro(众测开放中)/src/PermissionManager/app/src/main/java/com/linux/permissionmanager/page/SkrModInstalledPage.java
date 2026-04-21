@@ -262,9 +262,10 @@ public class SkrModInstalledPage {
     public void onChooseFileActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == ActivityResultId.REQUEST_CODE_CHOOSE_FILE && resultCode == Activity.RESULT_OK) {
             Uri uri = data.getData();
-            String filePath = FileUtils.getRealPathFromURI(mActivity, uri);
+            if (uri == null) return;
+            String filePath = FileUtils.getPathFromUriByCopy(mActivity, uri);
             if (filePath == null) {
-                Log.e("SkrModFragment", "Invalid file path");
+                Log.e("SkrModFragment", "Invalid file path or failed to copy file");
                 return;
             }
             onAddSkrMod(filePath);

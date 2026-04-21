@@ -230,6 +230,9 @@ int main(int argc, char *argv[]) {
  	TEST(idx++, Test_get_file_f_path_offset);				// 获取 file 结构体中 f_path 字段的偏移量
  	TEST(idx++, Test_get_file_f_inode_offset);				// 获取 file 结构体中 f_inode 字段的偏移量
  	TEST(idx++, Test_get_file_f_op_offset);					// 获取 file 结构体中 f_op 字段的偏移量
+ 	TEST(idx++, Test_get_file_f_flags_offset);				// 获取 file 结构体中 f_flags 字段的偏移量
+ 	TEST(idx++, Test_get_file_f_mode_offset);				// 获取 file 结构体中 f_mode 字段的偏移量
+ 	TEST(idx++, Test_get_file_f_pos_offset);				// 获取 file 结构体中 f_pos 字段的偏移量
  	TEST(idx++, Test_get_file_f_cred_offset);				// 获取 file 结构体中 f_cred 字段的偏移量
  	TEST(idx++, Test_get_file_private_data_offset);			// 获取 file 结构体中 private_data 字段的偏移量
  	TEST(idx++, Test_get_vm_area_struct_vm_offset);			// 获取 vm_area_struct 结构体中 vm 字段的偏移量
@@ -239,12 +242,16 @@ int main(int argc, char *argv[]) {
  	TEST(idx++, Test_get_inode_i_mapping_offset);			// 获取 inode 结构体中 i_mapping 字段的偏移量
  	TEST(idx++, Test_get_inode_i_ino_offset);				// 获取 inode 结构体中 i_ino 字段的偏移量
  	TEST(idx++, Test_get_inode_i_size_offset);				// 获取 inode 结构体中 i_size 字段的偏移量
+ 	TEST(idx++, Test_get_inode_i_rdev_offset);				// 获取 inode 结构体中 i_size 字段的偏移量
 	TEST(idx++, Test_get_inode_time_offset);				// 获取 inode 结构体中 i_atime/i_mtime/i_ctime 字段的偏移量
 	TEST(idx++, Test_get_inode_i_state_offset);				// 获取 inode 结构体中 i_state 字段的偏移量
+	TEST(idx++, Test_get_inode_i_bdev_offset);				// 获取 inode 结构体中 i_bdev 字段的偏移量
 	TEST(idx++, Test_get_super_block_s_uuid_offset);		// 获取 super_block 结构体中 s_uuid 字段的偏移量
 	TEST(idx++, Test_get_proc_ops_offsets);					// 获取 proc_ops 结构体的偏移量
 	TEST(idx++, Test_get_file_operations_offsets);			// 获取 file_operations 结构体的偏移量
 	TEST(idx++, Test_get_miscdevice_offsets);				// 获取 miscdevice 结构体的偏移量
+	TEST(idx++, Test_get_renamedata_old_dir_offset);		// 获取 renamedata 结构体中 old_dir\new_dir 字段的偏移量
+	TEST(idx++, Test_get_address_space_host_offset);		// 获取 address_space 结构体中 host 字段的偏移量
  	TEST(idx++, Test_set_current_caps);						// 设置进程能力集
  	TEST(idx++, Test_set_current_process_name);				// 设置进程名
 

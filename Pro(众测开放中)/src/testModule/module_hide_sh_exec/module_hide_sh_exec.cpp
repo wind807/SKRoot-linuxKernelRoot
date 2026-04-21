@@ -196,7 +196,7 @@ private:
                 uint16_t machine = *reinterpret_cast<uint16_t*>(&buffer[18]);
                 if (machine == 183) return "executable_arm64";
                 else if (machine == 40) return "executable_arm32";
-               else return "executable_other_elf";
+                else return "executable_other_elf";
             }
             return "executable_unknown_elf";
         }

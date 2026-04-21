@@ -169,6 +169,30 @@ KModErr Test_get_file_f_op_offset() {
     return KModErr::OK;
 }
 
+KModErr Test_get_file_f_flags_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_file_f_flags_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_file_f_mode_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_file_f_mode_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_file_f_pos_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_file_f_pos_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
 KModErr Test_get_file_f_cred_offset() {
     REQUIRE_ROOT_OR_RETURN();
     uint32_t offset = 0;
@@ -233,6 +257,13 @@ KModErr Test_get_inode_i_ino_offset() {
     return KModErr::OK;
 }
 
+KModErr Test_get_inode_i_rdev_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_inode_i_rdev_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
 KModErr Test_get_inode_i_size_offset() {
     REQUIRE_ROOT_OR_RETURN();
     uint32_t offset = 0;
@@ -256,6 +287,14 @@ KModErr Test_get_inode_i_state_offset() {
     uint32_t i_state_offset = 0;
     RETURN_IF_ERROR(kernel_module::get_inode_i_state_offset(i_state_offset));
     printf("Output i_state_offset: 0x%x\n", i_state_offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_inode_i_bdev_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t i_bdev_offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_inode_i_bdev_offset(i_bdev_offset));
+    printf("Output offset: 0x%x\n", i_bdev_offset);
     return KModErr::OK;
 }
 
@@ -306,6 +345,22 @@ KModErr Test_get_miscdevice_offsets() {
     printf("Output name_offset: 0x%x\n", offsets.name_offset);
     printf("Output fops_offset: 0x%x\n", offsets.fops_offset);
     printf("Output list_offset: 0x%x\n", offsets.list_offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_renamedata_old_dir_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_renamedata_old_dir_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_address_space_host_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_address_space_host_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
     return KModErr::OK;
 }
 

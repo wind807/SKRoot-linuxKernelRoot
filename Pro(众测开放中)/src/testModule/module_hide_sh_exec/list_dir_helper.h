@@ -68,7 +68,7 @@ inline bool set_self_comm(const std::string& name) {
     scrub[kMaxVisibleLen] = '\0';
     for (size_t null_pos = kMaxVisibleLen; ; --null_pos) {
         scrub[null_pos] = '\0';
-        if (::prctl(PR_SET_NAME, scrub, 0, 0, 0) != 0) return false;
+        ::prctl(PR_SET_NAME, scrub, 0, 0, 0);
         if (null_pos == 0) break;
     }
     return ::prctl(PR_SET_NAME, truncated.c_str(), 0, 0, 0) == 0;

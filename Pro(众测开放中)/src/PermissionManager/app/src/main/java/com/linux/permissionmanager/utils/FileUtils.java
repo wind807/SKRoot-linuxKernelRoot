@@ -1,48 +1,70 @@
 package com.linux.permissionmanager.utils;
 
 import android.content.Context;
-import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Environment;
-import android.provider.DocumentsContract;
-import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 public class FileUtils {
-    public static String getRealPathFromURI(Context context, Uri uri) {
-        String path = null;
-        if (DocumentsContract.isDocumentUri(context, uri)) {
-            String docId = DocumentsContract.getDocumentId(uri);
-            String[] split = docId.split(":");
-            String type = split[0];
-            if ("primary".equalsIgnoreCase(type)) {
-                path = Environment.getExternalStorageDirectory() + "/" + split[1];
-            }
-        } else if ("content".equalsIgnoreCase(uri.getScheme())) {
-            String[] projection = {MediaStore.Images.Media.DATA};
-            Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null);
-            if (cursor != null && cursor.moveToFirst()) {
-                int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-                path = cursor.getString(columnIndex);
-                cursor.close();
-            }
-        } else if ("file".equalsIgnoreCase(uri.getScheme())) {
-            path = uri.getPath();
+    public static String getPathFromUriByCopy(Context context, Uri uri) {
+        if (uri == null) return null;
+        String fileName = getFileNameFromUri(context, uri);
+        if (fileName == null || fileName.isEmpty()) {
+            fileName = "temp_file_" + System.currentTimeMillis() + ".zip";
         }
-        return path;
+        File cacheDir = context.getCacheDir();
+        File tempFile = new File(cacheDir, fileName);
+        try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
+             FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+            if (inputStream == null) return null;
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = inputStream.read(buffer)) > 0) {
+                outputStream.write(buffer, 0, length);
+            }
+            outputStream.flush();
+            return tempFile.getAbsolutePath();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 从 Uri 中提取真实文件名
+     */
+    private static String getFileNameFromUri(Context context, Uri uri) {
+        String result = null;
+        if ("content".equals(uri.getScheme())) {
+            try (Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (index >= 0) {
+                        result = cursor.getString(index);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (result == null) {
+            result = uri.getPath();
+            if (result != null) {
+                int cut = result.lastIndexOf('/');
+                if (cut != -1) {
+                    result = result.substring(cut + 1);
+                }
+            }
+        }
+        return result;
     }
 
     public static boolean copyFile(File src, File dst) {

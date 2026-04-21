@@ -89,6 +89,16 @@ KModErr get_task_struct_files_offset(uint32_t & offset);
 bool is_CONFIG_THREAD_INFO_IN_TASK();
 
 /***************************************************************************
+ * 判断当前内核中 SP_EL0 保存的是否为 thread_info* 而不是 task_struct*
+ * 说明:
+ *   若为 true，则当前进程的 task_struct* 需要从 thread_info->task 中获取。
+ * 返回:
+ *   true  表示 SP_EL0 中是 thread_info*，task_struct* 在 thread_info->task 中
+ *   false 表示不是这种情况
+ ***************************************************************************/
+bool is_CURRENT_FROM_SP_EL0_THREAD_INFO();
+
+/***************************************************************************
  * 设置当前进程的 COMM 名称
  * 参数: comm_name      要设置的进程 COMM 名（仅前 15 字节有效，结尾自动补 '\0'）
  * 返回: OK 表示成功；其它值为错误码

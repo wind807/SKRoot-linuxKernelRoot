@@ -4,6 +4,7 @@ import static com.linux.permissionmanager.AppSettings.HOTLOAD_SHELL_PATH;
 import static com.linux.permissionmanager.AppSettings.KEY_IS_HOTLOAD_MODE;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -12,10 +13,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.linux.permissionmanager.AppSettings;
@@ -24,12 +27,17 @@ import com.linux.permissionmanager.bridge.NativeBridge;
 import com.linux.permissionmanager.utils.ClipboardUtils;
 import com.linux.permissionmanager.utils.DialogUtils;
 
+import org.json.JSONObject;
+
 public class HomeFragment extends Fragment implements View.OnClickListener {
     private Activity mActivity;
     private String mRootKey = "";
     private String lastInputCmd = "id";
     private String lastInputRootExecPath = "";
 
+    private TextView tvSelinuxStatus;
+    private TextView tvSeccompStatus;
+    private TextView tvAdbStatus;
     private EditText mConsoleEdit;
     public HomeFragment(Activity activity, String rootKey) {
         mActivity = activity;
@@ -57,6 +65,9 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         Button implant_app_btn_btn = view.findViewById(R.id.implant_app_btn);
         Button copy_info_btn = view.findViewById(R.id.copy_info_btn);
         Button clean_info_btn = view.findViewById(R.id.clean_info_btn);
+        tvSelinuxStatus = view.findViewById(R.id.tv_selinux_status);
+        tvSeccompStatus = view.findViewById(R.id.tv_seccomp_status);
+        tvAdbStatus =view. findViewById(R.id.tv_adb_status);
         mConsoleEdit = view.findViewById(R.id.console_edit);
 
         install_skroot_env_btn.setOnClickListener(this);
@@ -67,6 +78,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         copy_info_btn.setOnClickListener(this);
         clean_info_btn.setOnClickListener(this);
         showSkrootStatus();
+        showSystemStatus();
     }
 
     @Override
@@ -119,6 +131,39 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         }
         if(isHotload && isFault) {
             appendConsoleMsg(isSkrootChannelOK(mRootKey) ? "当前为热启动模式，请立即安装SKRoot环境。" : "当前为热启动模式，正在等待热启动补丁响应，请稍候…");
+        }
+    }
+    private void showSystemStatus() {
+        try {
+            String json = NativeBridge.getSystemStatusJson();
+            JSONObject obj = new JSONObject(json);
+            int selinux = obj.optInt("selinux", -1);
+            int seccomp = obj.optInt("seccomp", -1);
+            boolean adb = obj.optBoolean("adb", false);
+            // SELinux
+            if (selinux == 0) setStatusText(tvSelinuxStatus, "SELinux: 宽容模式", false);
+            else setStatusText(tvSelinuxStatus, "SELinux: 严格模式", true);
+            // Seccomp
+            // 0 = disabled, 1 = strict, 2 = filter
+            if (seccomp == 2) setStatusText(tvSeccompStatus, "Seccomp: 过滤模式", true);
+            else if (seccomp == 1) setStatusText(tvSeccompStatus, "Seccomp: 严格模式", false);
+            else if (seccomp == 0) setStatusText(tvSeccompStatus, "Seccomp: 未开启", false);
+            else setStatusText(tvSeccompStatus, "Seccomp: 未知", false);
+            // ADB
+            if (adb) setStatusText(tvAdbStatus, "Adb: 已开启", false);
+            else setStatusText(tvAdbStatus, "Adb: 未开启", true);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setStatusText(TextView textView, String label, boolean ok) {
+        if (ok) {
+            textView.setText("✅ " + label);
+            textView.setTextColor(ContextCompat.getColor(mActivity, R.color.green));
+        } else {
+            textView.setText("❌ " + label);
+            textView.setTextColor(ContextCompat.getColor(mActivity, R.color.red));
         }
     }
 

@@ -10,7 +10,7 @@
 namespace fs = std::filesystem;
 
 template <class Fn>
-static pid_t spawn_delayed_task(unsigned delay_sec, Fn&& fn) {
+static pid_t fork_delayed_task(unsigned delay_sec, Fn&& fn) {
     using F = std::decay_t<Fn>;
     F f = std::forward<Fn>(fn);
 

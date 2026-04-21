@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
 	printf("%-29s %s\n\n", "module desc <zip_file_path>", "解析 SKRoot 模块的描述信息");
 	printf("%-29s %s\n\n", "module webui <mod_uuid>", "打开 SKRoot 模块 WebUI 页面");
 
-	printf(""如需帮助，请使用对应的命令，或者查看上面的菜单。\n\n");
+	printf("如需帮助，请使用对应的命令，或者查看上面的菜单。\n\n");
 	++argv;
 	--argc;
 	if (argc < 1) {

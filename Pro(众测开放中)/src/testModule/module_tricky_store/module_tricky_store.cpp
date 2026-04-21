@@ -111,7 +111,7 @@ int skroot_module_main(const char* root_key, const char* module_private_dir) {
     printf("tee_fix_toggle: %d\n", !!tee_fix_toggle);
     printf("hide_bootloader_toggle: %d\n", !!hide_bootloader_toggle);
 
-    spawn_delayed_task(7, [=] {
+    fork_delayed_task(7, [=] {
         if (auto_third_app_toggle) {
             bool ok = write_target_txt_applist();
             printf("[module_tricky_store] write target.txt applist: %s\n", ok ? "success" : "failed");
@@ -123,7 +123,7 @@ int skroot_module_main(const char* root_key, const char* module_private_dir) {
     });
 
     if (hide_bootloader_toggle) {
-        spawn_delayed_task(9, [=] {
+        fork_delayed_task(9, [=] {
             std::printf("[module_tricky_store] run hide_bootloader_sh\n");
             run_script(HIDE_BOOTLOADER_SH);
         });

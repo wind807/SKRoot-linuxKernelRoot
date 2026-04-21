@@ -2,7 +2,7 @@
 #include "kernel_module_kit_umbrella.h"
 #include "module_math.h"
 #include "aarch64_kernel_sym_call_helper.h"
-
+#include <sys/system_properties.h>
 
 /***************************************************************************
  * 这是 module_base_kernel_export_symbol.h 的实现部分
@@ -15,20 +15,62 @@ using namespace asmjit::a64::Predicate;
 using CallHelper = Aarch64KernelSymCallHelper;
 using NeedReturnX0 = CallHelper::NeedReturnX0;
 
+inline std::string get_system_property_7c20a6bec2a3baad94a2b20f71ea9844(const char* key) {
+    char value[PROP_VALUE_MAX] = {0};
+    int len = __system_property_get(key, value);
+    if (len <= 0) return {};
+    return std::string(value, static_cast<size_t>(len));
+}
+
+inline bool is_huawei_b9277bc3a432f95fbc688de2bcd203d1() {
+	std::string manufacturer = get_system_property_7c20a6bec2a3baad94a2b20f71ea9844("ro.product.manufacturer");
+	std::string brand = get_system_property_7c20a6bec2a3baad94a2b20f71ea9844("ro.product.brand");
+	std::transform(manufacturer.begin(), manufacturer.end(), manufacturer.begin(), [](unsigned char c){ return std::tolower(c); });
+	std::transform(brand.begin(), brand.end(), brand.begin(), [](unsigned char c){ return std::tolower(c); });
+	if (manufacturer.find("huawei") != std::string::npos || 
+        manufacturer.find("honor") != std::string::npos ||
+        brand.find("huawei") != std::string::npos || 
+        brand.find("honor") != std::string::npos) {
+        return true;
+    }
+	return false;
+}
+
+inline void emit_huawei_kti_add_ce72c7e634f27712ee84f3dd5e8e0ec9(Assembler* a, GpX x) {
+	if (!is_huawei_b9277bc3a432f95fbc688de2bcd203d1()) return;
+	RegProtectGuard g1(a, x1);
+	uint64_t kti_randomize_init_kaddr = 0;
+	uint64_t kti_offset_kaddr = 0;
+    if(is_failed(kernel_module::kallsyms_lookup_name("kti_randomize_init", kti_randomize_init_kaddr))) return;
+    if(is_failed(kernel_module::kallsyms_lookup_name("kti_offset", kti_offset_kaddr))) return;
+	aarch64_asm_mov_x(a, x1, kti_offset_kaddr);
+	a->ldr(x1, ptr(x1));
+	a->add(x, x, x1);
+}
+
 inline void get_current(Assembler* a, GpX out_regs) {
+	constexpr uint64_t kThreadSize = 0x4000;
 	struct thread_info {
-		uint64_t flags;		/* low level flags */
-		uint64_t addr_limit;	/* address limit */
+		uint64_t flags;
+		uint64_t addr_limit;
+		uint64_t task;
 	};
 	Label label_error = a->newLabel();
 	uint32_t sp_el0_id = SysReg::encode(3, 0, 4, 1, 0);
-	a->mrs(out_regs, sp_el0_id);
-	if (!kernel_module::is_CONFIG_THREAD_INFO_IN_TASK()) {
-		a->cbz(out_regs, label_error);
-		a->and_(out_regs, out_regs, Imm((uint64_t)~(0x4000 - 1)));
-		a->ldr(out_regs, ptr(out_regs, sizeof(thread_info)));
-		a->bind(label_error);
+	if (kernel_module::is_CONFIG_THREAD_INFO_IN_TASK()) {
+		a->mrs(out_regs, sp_el0_id);
+		emit_huawei_kti_add_ce72c7e634f27712ee84f3dd5e8e0ec9(a, out_regs);
+		return;
 	}
+	if (kernel_module::is_CURRENT_FROM_SP_EL0_THREAD_INFO()) {
+		a->mrs(out_regs, sp_el0_id);
+		emit_huawei_kti_add_ce72c7e634f27712ee84f3dd5e8e0ec9(a, out_regs);
+		a->ldr(out_regs, ptr(out_regs, offsetof(thread_info, task)));
+		return;
+	}
+	a->mov(out_regs, sp);
+	a->and_(out_regs, out_regs, Imm((uint64_t)~(kThreadSize - 1)));
+	a->ldr(out_regs, ptr(out_regs, offsetof(thread_info, task)));
 }
 
 static const std::vector<std::string> copy_from_user_symbol_names = {

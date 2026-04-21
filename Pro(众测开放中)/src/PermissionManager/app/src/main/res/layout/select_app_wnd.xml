@@ -15,19 +15,18 @@
             android:id="@+id/center_layout"
             android:layout_width="300dp"
             android:layout_height="600dp"
+            android:layout_centerInParent="true"
             android:background="@drawable/shape_wnd_grey_corner"
             android:elevation="5dp"
-            android:layout_centerInParent="true"
             android:orientation="vertical">
 
             <TextView
+                style="@style/MediumText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
                 android:layout_marginLeft="15dp"
-                android:text="选择应用"
-                style="@style/MediumText"
-                />
+                android:layout_marginTop="10dp"
+                android:text="选择应用" />
 
             <!--分割线条-->
             <View
@@ -36,7 +35,7 @@
                 android:layout_height="1dp"
                 android:layout_marginTop="2dp"
                 android:layout_marginBottom="2dp"
-                android:background="@color/colorGreyWhiteEx"/>
+                android:background="@color/colorGreyWhiteEx" />
 
 
             <!-- 搜索框和清除按钮的容器 -->
@@ -50,11 +49,11 @@
                     android:id="@+id/search_edit"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginLeft="5dp"
+                    android:layout_weight="1"
+                    android:hint="筛选..."
                     android:textColor="@color/white"
-                    android:textColorHint="@color/white"
-                    android:hint="筛选..."/>
+                    android:textColorHint="@color/white" />
 
                 <!-- 清除按钮 -->
                 <TextView
@@ -62,11 +61,11 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="@color/colorWndGrey"
-                    android:textColor="@color/white"
-                    android:visibility="gone"
                     android:paddingLeft="15dp"
                     android:paddingTop="10dp"
-                    android:text="X"/>
+                    android:text="X"
+                    android:textColor="@color/white"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <LinearLayout
@@ -87,8 +86,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="4dp"
-                    android:text="第三方应用"
                     android:checked="true"
+                    android:text="第三方应用"
                     android:textColor="@color/white" />
 
             </LinearLayout>
@@ -98,9 +97,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_marginTop="5dp"
-                android:scrollbars="vertical"
-                android:dividerHeight="1dp"
                 android:background="@color/colorAlpha"
+                android:dividerHeight="1dp"
+                android:scrollbars="vertical"
 
                 app:fastScrollEnabled="true"
                 app:fastScrollHorizontalThumbDrawable="@drawable/thumb_drawable"

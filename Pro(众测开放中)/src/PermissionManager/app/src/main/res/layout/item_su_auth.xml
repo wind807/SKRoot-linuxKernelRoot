@@ -83,7 +83,7 @@
             android:orientation="vertical"
             android:gravity="center"
             >
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/remove_btn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -93,7 +93,11 @@
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:textAllCaps="false"
-                android:includeFontPadding="false"/>
+                android:includeFontPadding="false"
+                android:paddingLeft="20dp"
+                android:paddingRight="20dp"
+                app:cornerRadius="8dp"
+                style="@style/Widget.MaterialComponents.Button"/>
         </LinearLayout>
 
     </LinearLayout>
