@@ -6,7 +6,7 @@ using namespace asmjit::a64;
 using namespace asmjit::a64::Predicate;
 
 PatchAvcDenied::PatchAvcDenied(const PatchBase& patch_base, const SymbolRegion& avc_denied) : PatchBase(patch_base) {
-	m_avc_denied = skip_pac_bti_at_func_start(avc_denied);
+	m_avc_denied = avc_denied;
 }
 
 PatchAvcDenied::~PatchAvcDenied() {}
@@ -22,6 +22,7 @@ size_t PatchAvcDenied::patch_avc_denied(const SymbolRegion& hook_func_start_regi
 		return 0;
 	}
 	uint32_t ret_instr = *reinterpret_cast<const uint32_t*>(&m_file_buf[avc_denied_ret_addr[0]]);
+
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
 	auto a = asm_ctx.assembler();
 
@@ -34,6 +35,7 @@ size_t PatchAvcDenied::patch_avc_denied(const SymbolRegion& hook_func_start_regi
 	else if (aarch64_insn_is_retaa(ret_instr)) aarch64_asm_retaa(a);
 	else if (aarch64_insn_is_retab(ret_instr)) aarch64_asm_retab(a);
 	std::cout << print_aarch64_asm(a) << std::endl;
+
 	std::vector<uint8_t> bytes = aarch64_asm_to_bytes(a);
 	if (bytes.size() == 0) return 0;
 	std::string str_bytes = bytes2hex((const unsigned char*)bytes.data(), bytes.size());
@@ -43,6 +45,7 @@ size_t PatchAvcDenied::patch_avc_denied(const SymbolRegion& hook_func_start_regi
 		return 0;
 	}
 	vec_out_patch_bytes_data.push_back({ str_bytes, hook_func_start_addr });
+
 	for (size_t addr : avc_denied_ret_addr) {
 		patch_jump(addr, hook_func_start_addr, vec_out_patch_bytes_data);
 	}

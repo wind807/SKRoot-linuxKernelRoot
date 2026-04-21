@@ -66,7 +66,9 @@ int su_client_main(int argc, char* argv[]) {
 		{ "mount-master",           no_argument,        nullptr, 'M' },
 		{ nullptr, 0, nullptr, 0 },
 	};
-
+	char cwd[PATH_MAX];
+	if (getcwd(cwd, sizeof(cwd)) == nullptr) strcpy(cwd, "/");
+	
 	su_request su_req;
 
 	for (int i = 0; i < argc; i++) {
@@ -142,10 +144,12 @@ int su_client_main(int argc, char* argv[]) {
 	}
 	struct passwd* pw = getpwuid(su_req.uid);
 	if (pw) {
-		setenv("HOME", pw->pw_dir, 1);
-		setenv("USER", pw->pw_name, 1);
-		setenv("LOGNAME", pw->pw_name, 1);
-		setenv("SHELL", su_req.shell.data(), 1);
+		if (!su_req.keepenv) {
+			setenv("HOME", pw->pw_dir, 1);
+			setenv("USER", pw->pw_name, 1);
+			setenv("LOGNAME", pw->pw_name, 1);
+			setenv("SHELL", su_req.shell.data(), 1);
+		}
 	}
 
 	const char* new_argv[] = {
@@ -154,6 +158,15 @@ int su_client_main(int argc, char* argv[]) {
 		!su_req.command.empty() ? su_req.command.c_str() : nullptr,
 		nullptr
 	};
+
+	if (!su_req.login) {
+		chdir(cwd);
+		setenv("PWD", cwd, 1);
+	} else if (pw) {
+		chdir(pw->pw_dir);
+		setenv("PWD", pw->pw_dir, 1);
+	}
+
 	// If you need it, you can unblock this line of code yourself
 	//set_identity(su_req.uid);
 	

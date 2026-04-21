@@ -99,12 +99,8 @@ bool KallsymsLookupName::init() {
 	return true;
 }
 
-bool KallsymsLookupName::is_inited() {
+bool KallsymsLookupName::is_inited() const {
 	return m_inited;
-}
-
-int KallsymsLookupName::get_kallsyms_num() {
-	return m_kallsyms_num;
 }
 
 static bool __find_kallsyms_addresses_list(const std::vector<char>& file_buf, size_t max_cnt, size_t& start, size_t& end) {
@@ -358,6 +354,22 @@ uint64_t KallsymsLookupName::kallsyms_lookup_name(const char* name) {
 		return 0;
 	}
 	return iter->second;
+}
+
+uint64_t KallsymsLookupName::kallsyms_symbol_size(uint64_t cur_addr) {
+	if (cur_addr == 0) return 0;
+	std::unordered_map<std::string, uint64_t> syms = kallsyms_on_each_symbol();
+	uint64_t next_addr = 0;
+	for (const auto& kv : syms) {
+		uint64_t addr = kv.second;
+		if (addr > cur_addr) {
+			if (next_addr == 0 || addr < next_addr) {
+				next_addr = addr;
+			}
+		}
+	}
+	if (next_addr == 0 || next_addr <= cur_addr) return 0;
+	return next_addr - cur_addr;
 }
 
 std::unordered_map<std::string, uint64_t> KallsymsLookupName::kallsyms_on_each_symbol() {

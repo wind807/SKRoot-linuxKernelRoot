@@ -3,19 +3,19 @@
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
+#include "kallsyms_lookup_interface.h"
 
-class KallsymsLookupName_6_1_0
-{
+class KallsymsLookupName_6_1_0 : public IKallsymsLookup {
 public:
 	KallsymsLookupName_6_1_0(const std::vector<char>& file_buf);
 	~KallsymsLookupName_6_1_0();
 
 public:
-	bool init();
-	bool is_inited();
-	uint64_t kallsyms_lookup_name(const char* name);
-	std::unordered_map<std::string, uint64_t> kallsyms_on_each_symbol();
-	int get_kallsyms_num();
+	bool init() override;
+	bool is_inited() const override;
+	uint64_t kallsyms_lookup_name(const char* name) override;
+	uint64_t kallsyms_symbol_size(uint64_t cur_addr) override;
+	std::unordered_map<std::string, uint64_t> kallsyms_on_each_symbol() override;
 
 private:
 	bool find_kallsyms_addresses_list(std::vector<std::pair<uint64_t, uint64_t>>& addresses);

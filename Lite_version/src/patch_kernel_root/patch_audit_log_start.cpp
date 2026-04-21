@@ -21,6 +21,7 @@ size_t PatchAuditLogStart::patch_audit_log_start(const SymbolRegion& hook_func_s
 
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
 	auto a = asm_ctx.assembler();
+
 	Label label_end = a->newLabel();
 	emit_safe_bl(a, hook_func_start_addr, current_avc_check_bl_func);
 	a->cbz(x10, label_end);
@@ -47,6 +48,7 @@ size_t PatchAuditLogStart::patch_audit_log_start(const SymbolRegion& hook_func_s
 		std::cout << "[发生错误] patch_audit_log_start failed: not enough kernel space." << std::endl;
 		return 0;
 	}
+
 	vec_out_patch_bytes_data.push_back({ str_bytes, hook_func_start_addr });
 	patch_jump(m_audit_log_start, hook_func_start_addr, vec_out_patch_bytes_data);
 	return shellcode_size;

@@ -27,13 +27,6 @@ uint32_t PatchBase::skip_pac_bti_at_func_start(uint32_t addr) {
 	return addr;
 }
 
-SymbolRegion PatchBase::skip_pac_bti_at_func_start(const SymbolRegion& symbol) {
-	uint32_t skip = skip_pac_bti_at_func_start(symbol.offset) - symbol.offset;
-	SymbolRegion new_sym = symbol;
-	new_sym.consume(skip);
-	return new_sym;
-}
-
 size_t PatchBase::patch_jump(size_t patch_addr, size_t jump_addr, std::vector<patch_bytes_data>& vec_out_patch_bytes_data) {
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
 	auto a = asm_ctx.assembler();

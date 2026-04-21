@@ -12,8 +12,7 @@
 #include <cstdlib>
 #include <capstone/capstone.h>
 
-namespace a64_find_func_return_offset {
-
+namespace a64_find_end_func_offset {
 	constexpr size_t k_npos = static_cast<size_t>(-1);
 	constexpr int k_max_jump_region = 1024 * 1024 * 5; // 5MB
 
@@ -69,9 +68,7 @@ namespace a64_find_func_return_offset {
 	static inline bool is_force_jump_asm(const code_line& line) {
 		if (line.cmd_id == ARM64_INS_BR) return true;
 		return line.cmd_id == ARM64_INS_B &&
-			(line.cc_id == ARM64_CC_INVALID ||
-				line.cc_id == ARM64_CC_AL ||
-				line.cc_id == ARM64_CC_NV);
+			(line.cc_id == ARM64_CC_INVALID || line.cc_id == ARM64_CC_AL || line.cc_id == ARM64_CC_NV);
 	}
 
 	static size_t index_by_addr(const std::vector<code_line>& v, uint64_t addr) {
@@ -80,14 +77,11 @@ namespace a64_find_func_return_offset {
 		return k_npos;
 	}
 
-	static void scan_from_index(const std::vector<code_line>& v_code_line,
-		size_t start_idx,
-		std::set<uint64_t>& branch_history,
-		std::vector<uint64_t>& out_ret_addrs,
-		std::vector<uint64_t>& out_branch_anchors) {
+	static void scan_from_index(const std::vector<code_line>& v_code_line, size_t start_idx,
+		std::set<uint64_t>& branch_history, std::vector<uint64_t>& out_ret_addrs, std::vector<uint64_t>& out_branch_anchors) {
+		
 		for (size_t x = start_idx; x < v_code_line.size(); ++x) {
 			const auto& line = v_code_line[x];
-
 			if (is_offset_jump_asm(line)) {
 				const int64_t addr = line.final_imm;
 				if (addr > 0 && addr < static_cast<int64_t>(line.addr + k_max_jump_region)) {
@@ -98,7 +92,14 @@ namespace a64_find_func_return_offset {
 					}
 				}
 
-				if (is_force_jump_asm(line)) break;
+				if (is_force_jump_asm(line)) {
+					// 无条件跳转如果是往回跳，视为一个“假的RET边界”
+					// 这里记录当前跳转指令地址，而不是跳转目标地址
+					if (addr > 0 && static_cast<uint64_t>(addr) < line.addr) {
+						out_ret_addrs.push_back(line.addr);
+					}
+					break;
+				}
 				continue;
 			}
 
@@ -106,8 +107,7 @@ namespace a64_find_func_return_offset {
 		}
 	}
 
-	static bool handle_candidate_offsets(const std::vector<code_line>& v_code_line,
-		size_t& candidate_offsets) {
+	static bool handle_candidate_offsets(const std::vector<code_line>& v_code_line, size_t& candidate_offsets) {
 		std::vector<uint64_t> ret_addrs;
 		std::vector<uint64_t> branch_anchors;
 		std::set<uint64_t> branch_history;
@@ -128,18 +128,14 @@ namespace a64_find_func_return_offset {
 		}
 
 		if (!ret_addrs.empty()) {
-			candidate_offsets = static_cast<size_t>(
-				*std::max_element(ret_addrs.begin(), ret_addrs.end())
-				);
+			candidate_offsets = static_cast<size_t>(*std::max_element(ret_addrs.begin(), ret_addrs.end()));
 			return true;
 		}
 
 		return false;
 	}
 
-	static bool find_func_return_offset(const std::vector<char>& file_buf,
-		size_t start,
-		size_t& candidate_offsets) {
+	static bool find_end_func_offset(const std::vector<char>& file_buf, size_t start, size_t& candidate_offsets) {
 		bool res = false;
 
 		csh handle;
@@ -216,4 +212,4 @@ namespace a64_find_func_return_offset {
 		return res;
 	}
 
-} // namespace a64_find_func_return_offset
+} // namespace a64_find_end_func_offset

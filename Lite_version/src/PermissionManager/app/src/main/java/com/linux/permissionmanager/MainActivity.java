@@ -133,7 +133,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.handleMessage(msg);
             }
         };
-        DialogUtils.showInputDlg(this, rootKey,"请输入Root权限的KEY", null, inputCallback, null);
+        DialogUtils.showInputDlg(this, rootKey,"请输入Root权限的Key", null, inputCallback, null);
     }
     private void checkGetAppListPermission() {
         if(GetAppListPermissionHelper.getPermissions(this)) return;

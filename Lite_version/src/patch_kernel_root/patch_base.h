@@ -25,7 +25,6 @@ public:
 	PatchBase(const PatchBase& other);
 	~PatchBase();
 	uint32_t skip_pac_bti_at_func_start(uint32_t addr);
-	SymbolRegion skip_pac_bti_at_func_start(const SymbolRegion& symbol);
 	size_t patch_jump(size_t patch_addr, size_t jump_addr, std::vector<patch_bytes_data>& vec_out_patch_bytes_data);
 
 protected:

@@ -24,6 +24,7 @@ size_t PatchCurrentAvcCheck::patch_current_avc_check_bl_func(const SymbolRegion&
 	Label label_end = a->newLabel();
 	Label label_allow = a->newLabel();
 	Label label_cycle_cap = a->newLabel();
+
 	a->mov(x10, xzr);
 	emit_get_current(a, x11);
 	a->ldr(x11, ptr(x11, task_struct_cred_offset));
@@ -44,7 +45,9 @@ size_t PatchCurrentAvcCheck::patch_current_avc_check_bl_func(const SymbolRegion&
 	a->mov(x10, Imm(1));
 	a->bind(label_end);
 	a->ret(x30);
+
 	std::cout << print_aarch64_asm(a) << std::endl;
+
 	std::vector<uint8_t> bytes = aarch64_asm_to_bytes(a);
 	if (bytes.size() == 0) return 0;
 	std::string str_bytes = bytes2hex((const unsigned char*)bytes.data(), bytes.size());

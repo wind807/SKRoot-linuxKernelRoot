@@ -18,8 +18,11 @@ public:
 public:
 	bool init_kallsyms_lookup_name();
 	uint64_t kallsyms_lookup_name(const char* name);
+	uint64_t kallsyms_symbol_size(uint64_t cur_addr);
 	std::unordered_map<std::string, uint64_t> kallsyms_lookup_names_like(const char* name);
+
 private:
+	bool try_init_lookup(IKallsymsLookup& lookup);
 	uint64_t check_convert_b_insn(uint64_t symbol_offset);
 	const std::vector<char>& m_file_buf;
 	KernelVersionParser m_kernel_ver_parser;
@@ -30,4 +33,5 @@ private:
 	KallsymsLookupName_6_1_60 m_kallsyms_lookup_name_6_1_60;
 	KallsymsLookupName_6_4_0 m_kallsyms_lookup_name_6_4_0;
 	KallsymsLookupName_6_12_0 m_kallsyms_lookup_name_6_12_0;
+	IKallsymsLookup* m_active_lookup = nullptr;
 };

@@ -1,5 +1,5 @@
 ﻿#include "symbol_analyze.h"
-#include "3rdparty/find_func_return_offset.h"
+#include "3rdparty/find_end_func_offset.h"
 
 SymbolAnalyze::SymbolAnalyze(const std::vector<char> &file_buf) : m_file_buf(file_buf), m_sym_parser(file_buf) { }
 
@@ -156,13 +156,15 @@ std::unordered_map<std::string, uint64_t> SymbolAnalyze::kallsyms_matching_all(c
 }
 
 SymbolRegion SymbolAnalyze::parse_symbol_region(uint64_t offset) {
-	using namespace a64_find_func_return_offset;
+	using namespace a64_find_end_func_offset;
 	SymbolRegion results;
 	results.offset = offset;
 	if (!results.valid()) return results;
 	size_t candidate_offsets = 0;
-	if (!find_func_return_offset(m_file_buf, offset, candidate_offsets)) return results;
-	results.size = candidate_offsets + 4;
+	if (!find_end_func_offset(m_file_buf, offset, candidate_offsets)) return results;
+	uint64_t candidate_size = candidate_offsets + 4;
+	uint64_t kallsyms_size = m_sym_parser.kallsyms_symbol_size(offset);
+	results.size = kallsyms_size ? std::min(candidate_size, kallsyms_size) : candidate_size;
 	return results;
 }
 
