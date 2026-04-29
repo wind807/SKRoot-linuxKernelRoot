@@ -51,7 +51,6 @@
           </button>
         </div>
         <div class="tip">
-          <div class="tip-main">提示：执行后台脚本时，建议命令下发后关闭本页面；脚本仍可继续在后台运行，同时隐蔽性更高。</div>
           <details class="tip-more">
             <summary>查看使用说明</summary>
             <div class="tip-sub">
@@ -65,6 +64,16 @@
     </div>
   </div>
 </div>
+
+<div id="pageExitOverlay" class="page-exit-overlay" aria-hidden="true">
+  <div class="page-exit-card" role="alert" aria-live="assertive">
+    <div class="page-exit-icon">✓</div>
+    <div class="page-exit-title">隐蔽的终端 WebUI 已关闭</div>
+    <div class="page-exit-desc">若已执行后台运行脚本，脚本会在后台继续运行。</div>
+    <div class="page-exit-sub">可以直接关闭本页面。</div>
+  </div>
+</div>
+
 
 <div id="sheetOverlay" class="sheet-overlay"></div>
 

@@ -70,18 +70,37 @@
       connText.textContent = text;
     }
 
-    async function tick() {
-      try {
-        const chunk = await RequestApi.getNewOutput();
-        if (chunk) consumeChunk(chunk);
-        failCount = 0;
-        setConn(true, "在线");
-      } catch (e) {
-        failCount++;
-        if (failCount >= 2) setConn(false, "异常");
-        else setConn(null, "连接中");
-      }
-    }
+	let hasConnectedOnce = false;
+	let exitOverlayShown = false;
+
+	function showPageExitOverlay() {
+	  if (exitOverlayShown) return;
+	  exitOverlayShown = true;
+	  const overlay = document.getElementById("pageExitOverlay");
+	  if (overlay) overlay.classList.add("show");
+	}
+
+	async function tick() {
+	  try {
+		const chunk = await RequestApi.getNewOutput();
+		if (chunk) consumeChunk(chunk);
+		failCount = 0;
+		hasConnectedOnce = true;
+		setConn(true, "在线");
+	  } catch (e) {
+		failCount++;
+		if (!hasConnectedOnce) {
+		  setConn(false, "异常");
+		  return;
+		}
+		if (failCount >= 2) {
+		  setConn(false, "已退出");
+		  showPageExitOverlay();
+		  return;
+		}
+		setConn(null, "连接中");
+	  }
+	}
 
     return {
       highlightText,

@@ -99,7 +99,7 @@ public:
         m_hide_dir = (fs::path(module_private_dir) / WORK_DIR_NAME).string();
         m_su_interactive.start();
         fork_sh_process_daemon();
-        m_idle_killer.start(std::chrono::seconds(30), [this] {
+        m_idle_killer.start(std::chrono::seconds(20), [this] {
             _exit(0);
         });
     }
@@ -116,6 +116,7 @@ public:
         else if(path == "/getHideDir") resp = handle_get_hide_dir();
         else if(path == "/checkFileType") resp = handle_check_file_type(body);
         else if(path == "/checkExecMount") resp = handle_check_exec_mount(body);
+        else if(path == "/exitWebui") resp = handle_exit_webui();
 
         kernel_module::webui::send_text(conn, 200, resp);
         return true;
@@ -215,6 +216,11 @@ private:
 		bool is_noexec = (st.f_flag & ST_NOEXEC) != 0;
 		return is_noexec ? "can not exec" : "can exec";
     }
+	
+	std::string handle_exit_webui() {
+       _exit(0);
+       return "OK";
+    }
 private:
     std::string m_root_key;
     std::string m_hide_dir;
@@ -224,7 +230,7 @@ private:
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("隐蔽的系统终端")
-SKROOT_MODULE_VERSION("3.0.5")
+SKROOT_MODULE_VERSION("3.0.6")
 SKROOT_MODULE_DESC("提供独立隐蔽的 sh 执行通道，彻底替代终端类 App，避免终端类 App 带来的特征暴露。")
 SKROOT_MODULE_AUTHOR("SKRoot")
 SKROOT_MODULE_UUID32("zse9vkTjLjWXbafvx8Mlh1MTf8SMTUEL")

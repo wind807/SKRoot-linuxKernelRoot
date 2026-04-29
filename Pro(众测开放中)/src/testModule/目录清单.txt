@@ -19,4 +19,5 @@ testModule 模块目录清单：
 • TrickyStore 集成模块（源码）.............. module_tricky_store
 • 伪装机型模块（源码）........................... module_fake_device
 • 温控解除模块（源码）........................... module_fake_thermal
+• 防格机模块（源码）.............................. module_protect_device
 ──────────────────────────────

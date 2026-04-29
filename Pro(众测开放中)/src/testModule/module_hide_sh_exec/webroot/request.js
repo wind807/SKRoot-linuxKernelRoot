@@ -1,7 +1,7 @@
 ﻿const RequestApi = (() => {
-  function postText(path, bodyText = "") {
+  function postText(path, bodyText = "", options = {}) {
     const url = new URL(path, window.location.href);
-    return fetch(url, { method: 'POST', body: bodyText });
+    return fetch(url, { method: 'POST', body: bodyText, ...options });
   }
 
   function decodeCppUrl(str) {
@@ -69,6 +69,11 @@
     return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
   }
 
+  async function exitWebui() {
+    const resp = await postText('/exitWebui', "", { keepalive: true });
+    return resp.ok ? await resp.text() : ('HTTP ' + resp.status);
+  }
+
   return {
     sendCommand,
     getNewOutput,
@@ -78,6 +83,7 @@
     saveAutoTasks,
     getHideDir,
     checkFileType,
-    checkExecMount
+    checkExecMount,
+    exitWebui
   };
 })();

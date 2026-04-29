@@ -9,6 +9,7 @@
   const autoBtn = document.getElementById("autoBtn");
   const sheetOverlay = document.getElementById("sheetOverlay");
   const inlineTip = document.getElementById("inlineTip");
+  const pageExitOverlay = document.getElementById("pageExitOverlay");
 
   const terminalCore = window.SKTerminalCore?.createTerminalCore({
     out,
@@ -71,6 +72,7 @@
       autoBtn,
       sheetOverlay,
       inlineTip,
+      pageExitOverlay,
     },
     refreshHistory,
     sendCommand,
@@ -110,4 +112,42 @@
   updateInlineTip();
   cmd.focus();
   setInterval(terminalCore.tick, 1000);
+
+
+  let pageExited = false;
+
+  function showPageExitOverlay() {
+    if (!pageExitOverlay) return;
+    pageExitOverlay.classList.add("show");
+    pageExitOverlay.setAttribute("aria-hidden", "false");
+  }
+
+  function onPageHidden() {
+    if (pageExited) return;
+    pageExited = true;
+
+    showPageExitOverlay();
+    terminalCore.setConn(false, "已退出");
+    cmd.disabled = true;
+    sendBtn.disabled = true;
+
+    try {
+      if (typeof app.closeAllSheets === "function") app.closeAllSheets();
+    } catch (e) {
+      console.warn("close sheets failed:", e);
+    }
+
+    try {
+      RequestApi.exitWebui();
+    } catch (e) {
+      console.warn("exitWebui failed:", e);
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") onPageHidden();
+  });
+
+  window.addEventListener("pagehide", onPageHidden);
+
 })();

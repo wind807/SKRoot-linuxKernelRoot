@@ -34,8 +34,8 @@ PatchFilldir64::PatchFilldir64(const PatchBase& patch_base, uint64_t filldir64) 
 PatchFilldir64::~PatchFilldir64() {}
 
 KModErr PatchFilldir64::patch_filldir64(const std::set<std::string>& hide_dir_list) {
-	GpX x_name_arg = x1;
-	GpW w_namelen_arg = w2;
+	GpX x1_name = x1;
+	GpW w2_namelen = w2;
 
 	std::vector<std::string> hide_dirs(hide_dir_list.begin(), hide_dir_list.end());
 
@@ -56,14 +56,14 @@ KModErr PatchFilldir64::patch_filldir64(const std::set<std::string>& hide_dir_li
 
 		const auto& dir_name = hide_dirs[i];
 		aarch64_asm_mov_w(a, w11, dir_name.length());
-		a->cmp(w_namelen_arg, w11);
+		a->cmp(w2_namelen, w11);
 		a->b(CondCode::kNE, L_next); //下一个
 
 		// memcmp key
 		aarch64_asm_set_x_cstr_ptr(a, x12, dir_name);
 		{
 			RegProtectGuard g1(a, x0);
-			kernel_module::string_ops::kmemcmp(a, x_name_arg, x12, x11);
+			kernel_module::string_ops::kmemcmp(a, x1_name, x12, x11);
 			a->mov(x11, x0);
 		}
 		a->cbnz(x11, L_next); //不相等，下一个

@@ -737,3 +737,94 @@ input.auto-cmd:focus, input.auto-delay:focus { border-color: var(--accent); back
 .modal-path-to {
   margin-top: 2px;
 }
+
+/* ====== WebUI 退出全屏提示 ====== */
+.page-exit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background:
+    radial-gradient(680px 420px at 50% 35%, rgba(22, 119, 255, 0.18), transparent 70%),
+    rgba(248, 250, 252, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .18s ease, visibility .18s ease;
+}
+
+.page-exit-overlay.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.page-exit-card {
+  width: min(360px, 100%);
+  padding: 30px 24px 26px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(22, 119, 255, 0.14);
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(22, 119, 255, 0.16);
+  transform: translateY(8px) scale(.98);
+  transition: transform .22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.page-exit-overlay.show .page-exit-card {
+  transform: translateY(0) scale(1);
+}
+
+.page-exit-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #2a86ff, #1677ff);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(22, 119, 255, 0.24);
+}
+
+.page-exit-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: .2px;
+}
+
+.page-exit-desc {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #475569;
+}
+
+.page-exit-sub {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+@media (max-width: 520px) {
+  .page-exit-card {
+    border-radius: 20px;
+    padding: 28px 20px 24px;
+  }
+  .page-exit-title {
+    font-size: 17px;
+  }
+  .page-exit-desc {
+    font-size: 13px;
+  }
+}
+
