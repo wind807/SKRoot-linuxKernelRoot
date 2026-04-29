@@ -33,9 +33,18 @@ static inline uint32_t user_rdev_to_kernel_dev(dev_t rdev) {
     return ((maj << KERNEL_MINORBITS) | (min & KERNEL_MINORMASK));
 }
 
+// 放这里：通用块设备忽略规则
+static inline bool is_ignored_block_name(const char* name) {
+    if (!name || !name[0]) return true;
+    return strncmp(name, "loop", 4) == 0 ||
+           strncmp(name, "zram", 4) == 0 ||
+           strncmp(name, "ram", 3) == 0;
+}
+
+// by-name 分区过滤规则
 static inline bool is_white_name(const char* name) {
-    return strncmp(name, "zram", 4) == 0 ||
-           strcmp(name, "userdata") == 0 ||
+    if (is_ignored_block_name(name)) return true;
+    return strcmp(name, "userdata") == 0 ||
            strcmp(name, "cache") == 0 ||
            strcmp(name, "logfs") == 0 ||
            strcmp(name, "logdump") == 0 ||
@@ -117,8 +126,11 @@ static inline bool find_devnode_by_rdev(dev_t target_rdev, std::string& out_path
 
     struct dirent* ent;
     while ((ent = readdir(dir)) != nullptr) {
-        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) continue;
-        std::string path = std::string("/dev/block/") + ent->d_name;
+        const char* name = ent->d_name;
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
+        if (is_ignored_block_name(name)) continue;
+
+        std::string path = std::string("/dev/block/") + name;
 
         struct stat st{};
         if (stat(path.c_str(), &st) == 0 &&
