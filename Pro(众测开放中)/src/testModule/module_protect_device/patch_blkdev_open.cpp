@@ -37,7 +37,7 @@ PatchBlkdevOpen::PatchBlkdevOpen(const PatchBase& patch_base, uint64_t blkdev_op
 
 PatchBlkdevOpen::~PatchBlkdevOpen() {}
 
-KModErr PatchBlkdevOpen::patch_blkdev_open(const std::vector<DevNodeInfo> & protect_dev, const std::string& test_comm_name, uint64_t control_kaddr, const BlkdevOpenPatchOffsets& off) {
+KModErr PatchBlkdevOpen::patch_blkdev_open(const std::vector<block_device_helper::DevNodeInfo> & protect_dev, const std::string& test_comm_name, uint64_t control_kaddr, const BlkdevOpenPatchOffsets& off) {
 	KModErr err = KModErr::ERR_MODULE_ASM;
 
 	GpX x0_inode = x0;
@@ -51,7 +51,6 @@ KModErr PatchBlkdevOpen::patch_blkdev_open(const std::vector<DevNodeInfo> & prot
 	auto a = asm_ctx.assembler();
 	Label L_entry = a->newLabel();
 	Label L_normal = a->newLabel();
-	Label L_check_irdev = a->newLabel();
 	Label L_not_allow = a->newLabel();
 
 	//这里下面是内核态要运行的指令
@@ -62,46 +61,11 @@ KModErr PatchBlkdevOpen::patch_blkdev_open(const std::vector<DevNodeInfo> & prot
 
 	aarch64_asm_mov_x(a, x11, control_kaddr);
 	a->ldrb(w11, ptr(x11));
-	a->cbz(w11, L_normal); // 需要等开关延迟打开。
+	a->cbz(w11, L_normal);
 
 	a->bind(L_entry);
 	a->ldr(w11, ptr(x1_flip, off.file_f_mode));
 	a->tbz(w11, FMODE_WRITE_BIT, L_normal); // no write
-
-	// struct block_device *bdev = I_BDEV(inode);
-	{
-		RegProtectGuard g1(a, x0);
-		kernel_module::export_symbol::I_BDEV(a, err, x0_inode);
-        RETURN_IF_ERROR(err);
-		a->mov(x12, x0);
-	}
-	// if (!bdev) {
-	a->cbz(x12, L_check_irdev); 
-
-	if (kernel_module::is_kernel_version_less("4.14.0")) {
-		// if (bdev->bd_part == &bdev->bd_disk->part0) {
-		aarch64_asm_mov_w(a, w11, off._4_14_linux.bdev_bd_part);
-		a->add(x11, x12, x11);
-		a->ldr(x11, ptr(x11));
-
-		aarch64_asm_mov_w(a, w13, off._4_14_linux.bdev_bd_disk);
-		aarch64_asm_mov_w(a, w14, off._4_14_linux.gendisk_part0);
-		a->add(x13, x12, x13);
-		a->ldr(x13, ptr(x13));
-		a->add(x14, x13, x14);
-
-		a->cmp(x11, x14);
-		a->b(CondCode::kEQ, L_not_allow);
-		
-	} else {
-		// if (bdev->bd_partno == 0) {
-		aarch64_asm_mov_w(a, w11, off.bdev_bd_partno);
-		a->add(x11, x12, x11);
-		a->ldrb(w11, ptr(x11)); //读里面的值
-		a->cbz(w11, L_not_allow);
-	}
-
-	a->bind(L_check_irdev);
 
 	// check inode->i_rdev
 	aarch64_asm_mov_w(a, w11, off.inode_i_rdev);
