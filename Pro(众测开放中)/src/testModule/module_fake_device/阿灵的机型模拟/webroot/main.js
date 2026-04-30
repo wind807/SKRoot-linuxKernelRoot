@@ -14,6 +14,8 @@ const models = [
   { name: "一加15", sh: "oneplus15.sh" },
   { name: "一加Ace6", sh: "oneplus_ace6.sh" },
   { name: "红米K90", sh: "redmi_k90.sh" },
+  { name: "红米K90 Max", sh: "redmi_k90_max.sh" },
+  { name: "红米K90 Pro Max", sh: "redmi_k90_pro_max.sh" },
   { name: "IQOO 15", sh: "iqoo_15.sh" },
   { name: "IQOO 15 Ultra", sh: "iqoo_15_ultra.sh" },
   { name: "Oppo FindX8Ultra", sh: "oppo_find_x8_ultra.sh" },

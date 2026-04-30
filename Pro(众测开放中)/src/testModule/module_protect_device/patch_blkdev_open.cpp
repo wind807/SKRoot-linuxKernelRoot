@@ -38,8 +38,10 @@ PatchBlkdevOpen::PatchBlkdevOpen(const PatchBase& patch_base, uint64_t blkdev_op
 PatchBlkdevOpen::~PatchBlkdevOpen() {}
 
 KModErr PatchBlkdevOpen::patch_blkdev_open(const std::vector<block_device_helper::DevNodeInfo> & protect_dev, const std::string& test_comm_name, uint64_t control_kaddr, const BlkdevOpenPatchOffsets& off) {
-	KModErr err = KModErr::ERR_MODULE_ASM;
+	std::set<uint32_t> kernel_rdev_set;
+    for (auto& dev : protect_dev) kernel_rdev_set.insert(dev.kernel_rdev);
 
+	KModErr err = KModErr::ERR_MODULE_ASM;
 	GpX x0_inode = x0;
 	GpX x1_flip = x1;
 	GpX x15_flag = x15;
@@ -72,8 +74,8 @@ KModErr PatchBlkdevOpen::patch_blkdev_open(const std::vector<block_device_helper
 	a->add(x12, x0_inode, x11);
 	a->ldr(w11, ptr(x12)); // ARM64 Linux内核里inode->i_rdev是32位。
 
-	for (auto& dev: protect_dev) {
-		aarch64_asm_mov_w(a, w12, (uint32_t)dev.kernel_rdev);
+	for (auto& k_rdev: kernel_rdev_set) {
+		aarch64_asm_mov_w(a, w12, k_rdev);
 		a->cmp(w11, w12);
 		a->b(CondCode::kEQ, L_not_allow);
 	}

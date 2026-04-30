@@ -55,6 +55,103 @@ static inline bool is_white_name(const char* name) {
            strcmp(name, "qmcs") == 0;
 }
 
+
+static inline bool find_by_name_dir_path(std::string& out_path) {
+    // 候选列表：将通用标准放在第一位，高通放在第二位
+    const char* candidate_paths[] = {
+        "/dev/block/by-name/",             // Android 10+ 绝对通用标准 (首选)
+        "/dev/block/bootdevice/by-name/",  // 高通标准
+        "/dev/block/platform/bootdevice/by-name/" // 某些老机型
+    };
+
+    // 1. 尝试常规候选路径
+    for (const char* path : candidate_paths) {
+        DIR* dir = opendir(path);
+        if (dir) {
+            closedir(dir);
+            out_path = path;
+            return true;
+        }
+    }
+
+    // 2. MTK 终极 Fallback：动态扫描 /dev/block/platform 寻找 by-name 目录
+    // 应对类似 /dev/block/platform/mtk-msdc.0/by-name/ 这种魔幻路径
+    DIR* platform_dir = opendir("/dev/block/platform");
+    if (platform_dir) {
+        struct dirent* ent;
+        while ((ent = readdir(platform_dir)) != nullptr) {
+            const char* name = ent->d_name;
+            if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
+            
+            // 拼接猜测的子目录路径
+            std::string test_path = std::string("/dev/block/platform/") + name + "/by-name/";
+            DIR* test_dir = opendir(test_path.c_str());
+            if (test_dir) {
+                closedir(test_dir);
+                out_path = test_path;
+                closedir(platform_dir);
+                return true;
+            }
+        }
+        closedir(platform_dir);
+    }
+
+    return false;
+}
+
+static inline bool collect_target_partitions(std::vector<DevNodeInfo>& partitions) {
+    std::string base_dir_path;
+    
+    if (!find_by_name_dir_path(base_dir_path)) {
+        printf("collect_target_partitions: all by-name fallbacks failed, cannot find partition dir\n");
+        return false;
+    }
+
+    DIR* dir = opendir(base_dir_path.c_str());
+    if (!dir) {
+        printf("collect_target_partitions: opendir failed on resolved path: %s errno=%d\n", base_dir_path.c_str(), errno);
+        return false;
+    }
+
+    std::set<dev_t> added_partition_rdevs;
+    struct dirent* ent;
+    
+    while ((ent = readdir(dir)) != nullptr) {
+        const char* name = ent->d_name;
+
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
+        if (is_white_name(name)) continue;
+
+        // 使用动态探测到的基础路径进行拼接
+        std::string full_path = base_dir_path + name;
+
+        struct stat st{};
+        if (stat(full_path.c_str(), &st) != 0 || !S_ISBLK(st.st_mode)) {
+            // 可选：加个打印排查哪些 stat 失败了
+            printf("skip non-block or stat fail: %s\n", full_path.c_str());
+            continue;
+        }
+
+        if (added_partition_rdevs.find(st.st_rdev) != added_partition_rdevs.end()) continue;
+        added_partition_rdevs.insert(st.st_rdev);
+
+        DevNodeInfo info{};
+        strncpy(info.name, name, sizeof(info.name) - 1);
+        snprintf(info.path, sizeof(info.path), "%s", full_path.c_str());
+        info.original_rdev = st.st_rdev;
+
+        partitions.push_back(info);
+
+        printf("add partition: %s -> %s (%u:%u)\n",
+               info.name,
+               info.path[0] ? info.path : "<no-path>",
+               major(info.original_rdev),
+               minor(info.original_rdev));
+    }
+    closedir(dir);
+    return !partitions.empty();
+}
+
 static inline bool read_sysfs_dev(const std::string& dev_file_path, dev_t& out_rdev) {
     std::ifstream file(dev_file_path);
     if (!file.is_open()) return false;
@@ -144,48 +241,6 @@ static inline bool find_devnode_by_rdev(dev_t target_rdev, std::string& out_path
 
     closedir(dir);
     return false;
-}
-
-static inline bool collect_target_partitions(std::vector<DevNodeInfo>& partitions) {
-    DIR* dir = opendir("/dev/block/bootdevice/by-name/");
-    if (!dir) {
-        printf("collect_target_partitions: opendir failed\n");
-        return false;
-    }
-
-    std::set<dev_t> added_partition_rdevs;
-
-    struct dirent* ent;
-    while ((ent = readdir(dir)) != nullptr) {
-        const char* name = ent->d_name;
-
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
-        if (is_white_name(name)) continue;
-
-        std::string full_path = std::string("/dev/block/bootdevice/by-name/") + name;
-
-        struct stat st{};
-        if (stat(full_path.c_str(), &st) != 0 || !S_ISBLK(st.st_mode)) continue;
-
-        if (added_partition_rdevs.find(st.st_rdev) != added_partition_rdevs.end()) continue;
-        added_partition_rdevs.insert(st.st_rdev);
-
-        DevNodeInfo info{};
-        strncpy(info.name, name, sizeof(info.name) - 1);
-        snprintf(info.path, sizeof(info.path), "%s", full_path.c_str());
-        info.original_rdev = st.st_rdev;
-
-        partitions.push_back(info);
-
-        printf("add partition: %s -> %s (%u:%u)\n",
-               info.name,
-               info.path[0] ? info.path : "<no-path>",
-               major(info.original_rdev),
-               minor(info.original_rdev));
-    }
-
-    closedir(dir);
-    return !partitions.empty();
 }
 
 static inline std::string strip_slot_suffix(const char* name) {
