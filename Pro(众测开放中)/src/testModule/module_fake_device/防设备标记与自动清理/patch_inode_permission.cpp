@@ -1,4 +1,4 @@
-﻿#include "patch_filldir64.h"
+﻿#include "patch_inode_permission.h"
 #include <vector>
 using namespace asmjit;
 using namespace asmjit::a64;
@@ -35,57 +35,59 @@ android版本的差异内核源码浏览：
  https://android.googlesource.com/kernel/common/
 */
 
-PatchFilldir64::PatchFilldir64(const PatchBase& patch_base, uint64_t filldir64) : PatchBase(patch_base), m_filldir64(filldir64) {}
+#define	EACCES		13	/* Permission denied */
 
-PatchFilldir64::~PatchFilldir64() {}
+PatchInodePermission::PatchInodePermission(const PatchBase& patch_base, uint64_t inode_permission) : PatchBase(patch_base), m_inode_permission(inode_permission) {}
 
-KModErr PatchFilldir64::patch_filldir64(const std::set<std::string>& hide_dir_list) {
-	GpX x1_name = x1;
-	GpW w2_namelen = w2;
+PatchInodePermission::~PatchInodePermission() {}
 
-	std::vector<std::string> hide_dirs(hide_dir_list.begin(), hide_dir_list.end());
+KModErr PatchInodePermission::patch_inode_permission(uint64_t target_i_ino, uint32_t target_s_dev, uint64_t control_kaddr, const InodePermissionPatchOffsets& off) {
+	GpX x0_inode = x0;
+	GpX x1_inode = x1;
 
 	// 生成Hook func汇编命令
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
 	auto a = asm_ctx.assembler();
-	Label L_allow_visible = a->newLabel();
+	Label L_normal = a->newLabel();
 
 	// 这里下面是内核态要运行的指令
 	kernel_module::arm64_before_hook_start(a);
-
-	// 比较下进程名，放行白名单进程名。
-	emit_check_current_allow_visible_to_x10(a);
-	a->cbnz(x10, L_allow_visible);
-
-	for (size_t i = 0; i < hide_dirs.size(); ++i) {
-		Label L_next = a->newLabel();
-
-		const auto& dir_name = hide_dirs[i];
-		aarch64_asm_mov_w(a, w11, dir_name.length());
-		a->cmp(w2_namelen, w11);
-		a->b(CondCode::kNE, L_next); //下一个
-
-		// memcmp key
-		aarch64_asm_set_x_cstr_ptr(a, x12, dir_name);
-		{
-			RegProtectGuard g1(a, x0);
-			kernel_module::string_ops::kmemcmp(a, x1_name, x12, x11);
-			a->mov(x11, x0);
-		}
-		a->cbnz(x11, L_next); //不相等，下一个
-
-		// 隐藏文件夹的返回
-		if (kernel_module::is_kernel_version_less("6.1.0")) {
-			a->mov(x0, xzr);
-		} else {
-			a->mov(x0, Imm(1));
-		}
-		kernel_module::arm64_before_hook_end(a, false); // 直接返回，不跳回原函数
-
-		a->bind(L_next);
-	}
 	
-	a->bind(L_allow_visible);
+	aarch64_asm_mov_x(a, x10, control_kaddr);
+	a->ldrb(w10, ptr(x10));
+	a->cbz(w10, L_normal);
+
+	if (kernel_module::is_kernel_version_less("5.12.0")) {
+		a->mov(x10, x0_inode);
+	} else {
+		a->mov(x10, x1_inode);
+	}
+
+	// check inode->i_ino
+	aarch64_asm_mov_x(a, x11, (uint64_t)off.inode_i_ino);
+	a->add(x11, x10, x11);
+	a->ldr(x11, ptr(x11)); // ARM64 Linux内核里inode->i_ino是64位。
+
+	aarch64_asm_mov_x(a, x12, target_i_ino);
+	a->cmp(x11, x12);
+	a->b(CondCode::kNE, L_normal);
+
+	
+	// check inode->i_sb->s_dev
+	aarch64_asm_mov_x(a, x11, (uint64_t)off.inode_i_sb);
+	aarch64_asm_mov_x(a, x12, (uint64_t)off.super_block_s_dev);
+	a->add(x11, x10, x11);
+	a->ldr(x11, ptr(x11));
+	a->add(x12, x11, x12);
+	a->ldr(w12, ptr(x12));
+	aarch64_asm_mov_w(a, w11, target_s_dev);
+	a->cmp(w11, w12);
+	a->b(CondCode::kNE, L_normal);
+	
+	a->mov(x0, Imm(-EACCES));
+	kernel_module::arm64_before_hook_end(a, false); // 直接返回，不跳回原函数
+	
+	a->bind(L_normal);
 	kernel_module::arm64_before_hook_end(a, true); // 正常返回
-	return patch_kernel_before_hook(m_filldir64, a);
+	return patch_kernel_before_hook(m_inode_permission, a);
 }

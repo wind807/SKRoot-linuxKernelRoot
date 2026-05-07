@@ -10,7 +10,7 @@
 static KModErr patch_kernel_handler(const std::vector<block_device_helper::DevNodeInfo>& dev_list, const std::string& test_comm_name, uint64_t control_kaddr) {
     uint64_t blkdev_open_sym = 0;
     RETURN_IF_ERROR(kernel_module::kallsyms_lookup_name("blkdev_open", blkdev_open_sym));
-    printf("blkdev_open(sym), addr: %p\n", (void*)blkdev_open_sym);
+    printf("blkdev_open(sym) addr: %p\n", (void*)blkdev_open_sym);
 
     uint32_t comm_offset = 0;
     RETURN_IF_ERROR(kernel_module::get_task_struct_comm_offset(comm_offset));
@@ -79,7 +79,7 @@ int skroot_module_main(const char* root_key, const char* module_private_dir) {
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防格机 (防变黑砖)")
 SKROOT_MODULE_VERSION("1.0.2")
-SKROOT_MODULE_DESC("内核级防黑砖保护，拦截恶意程序对核心分区的写入，防止设备变黑砖。开机1分钟后保护生效。需提前手动备份/mnt/vendor/persist/，双清后可恢复正常开机。")
+SKROOT_MODULE_DESC("内核级防黑砖保护，拦截恶意程序对核心分区的写入，防止设备变黑砖。开机1分钟后保护生效。需提前手动备份persist文件夹(路径：/mnt/vendor/persist/)，双清后可恢复正常开机。")
 SKROOT_MODULE_AUTHOR("SKRoot")
 SKROOT_MODULE_UUID32("BbA6MdJYoS2ggs58zU327m5ufBihCOrS")
 SKROOT_MODULE_UPDATE_JSON("https://abcz316.github.io/SKRoot-linuxKernelRoot/module_protect_device/update.json")

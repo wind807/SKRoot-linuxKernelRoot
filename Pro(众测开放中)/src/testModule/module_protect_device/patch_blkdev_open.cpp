@@ -27,6 +27,12 @@ ABI 规定哪些寄存器需要保存？
 caller-saved（会被调用者破坏）：X0..X17、Q0..Q7
 callee-saved（必须由被调函数保存）：X19..X29、Q8..Q15、SP、FP、LR
 也就是说，像 get_task_mm 这种标准C函数，它自己保证不会破坏 callee-saved 寄存器。
+
+
+在线Linux内核源码预览，快速定位寻找查询Linux函数声明、实现的网址：
+ https://elixir.bootlin.com/linux
+android版本的差异内核源码浏览：
+ https://android.googlesource.com/kernel/common/
 */
 
 #define FMODE_WRITE_BIT  1

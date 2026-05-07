@@ -17,7 +17,7 @@
 #include <signal.h>
 #include <errno.h>
 
-#include "main.h"
+#include "process_utils.h"
 
 namespace fs = std::filesystem;
 
@@ -74,18 +74,6 @@ static bool is_pkg_running(const std::string& pkg, uint64_t min_rss_kb = 0) {
     return false;
 }
 
-static bool kill_pid_force(pid_t pid) {
-    if (pid <= 1) return false;
-
-    if (::kill(pid, SIGKILL) == 0) {
-        return true;
-    }
-
-    if (errno == ESRCH) return true; // 已不存在，也算成功
-    printf("kill_pid_force failed: pid=%d errno=%d msg=%s\n", pid, errno, std::strerror(errno));
-    return false;
-}
-
 static std::vector<pid_t> find_pids_by_pkg_name(const std::string& pkg) {
     std::vector<pid_t> result;
     if (pkg.empty()) return result;
@@ -101,14 +89,14 @@ static std::vector<pid_t> find_pids_by_pkg_name(const std::string& pkg) {
         if (!entry.is_directory(ec) || ec) { ec.clear(); continue; }
 
         const std::string pid_str = entry.path().filename().string();
-        if (!is_all_digits(pid_str)) continue;
+        if (!process_utils::is_all_digits(pid_str)) continue;
 
         const pid_t pid = static_cast<pid_t>(std::atoi(pid_str.c_str()));
         if (pid <= 1) continue;
 
         // 先看 cmdline
         std::string cmdline;
-        if (read_text_file((entry.path() / "cmdline").string().c_str(), cmdline)) {
+        if (file_utils::read_text_file((entry.path() / "cmdline").string().c_str(), cmdline)) {
             for (char& c : cmdline) {
                 if (c == '\0') c = ' ';
             }
@@ -124,7 +112,7 @@ static std::vector<pid_t> find_pids_by_pkg_name(const std::string& pkg) {
 
         // 再兜底看 /proc/<pid>/comm
         std::string comm;
-        if (read_text_file((entry.path() / "comm").string().c_str(), comm)) {
+        if (file_utils::read_text_file((entry.path() / "comm").string().c_str(), comm)) {
             while (!comm.empty() && (comm.back() == '\n' || comm.back() == '\r' || comm.back() == '\0')) {
                 comm.pop_back();
             }
@@ -146,7 +134,7 @@ static bool kill_pkg_all_processes_once(const std::string& pkg) {
 
     bool ok = true;
     for (pid_t pid : pids) {
-        if (!kill_pid_force(pid)) ok = false;
+        if (!process_utils::kill_pid_force(pid)) ok = false;
     }
     return ok;
 }
@@ -183,26 +171,4 @@ static void kill_pkg_list_until_stopped(const std::set<std::string>& pkgs,
             printf("kill_pkg_list_until_stopped still_running: %s\n", pkg.c_str());
         }
     }
-}
-
-static bool is_pid_root(int pid) {
-    if (pid <= 0) return false;
-
-    std::ifstream in("/proc/" + std::to_string(pid) + "/status");
-    if (!in.is_open()) return false;
-
-    std::string line;
-    while (std::getline(in, line)) {
-        if (!line.starts_with("Uid:")) continue;
-
-        std::istringstream iss(line);
-        std::string key;
-        unsigned int ruid = 0, euid = 0, suid = 0, fsuid = 0;
-        if (iss >> key >> ruid >> euid >> suid >> fsuid) {
-            return euid == 0;
-        }
-        return false;
-    }
-
-    return false;
 }

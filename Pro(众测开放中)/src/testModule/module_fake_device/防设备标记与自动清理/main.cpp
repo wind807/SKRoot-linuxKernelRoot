@@ -2,18 +2,16 @@
 #include <unordered_map>
 #include <signal.h>
 
-#include "main.h"
 #include "cJSON.h"
 #include "android_packages_list_utils.h"
+#include "persist_dir_perm_helper.h"
 #include "boot_session_utils.h"
-#include "persist_data_perm_helper.h"
+#include "file_utils.h"
 #include "pkg_process_helper.h"
 
-static inline constexpr const char* kPrivateDirName = "empty_dir";
+using namespace file_utils;
 
-static fs::path g_empty_dir;
 static bool g_need_reload = false;
-
 
 // 把 ["aa","bb","cc"] 解析成 std::set<std::string>
 static std::set<std::string> parse_json(const std::string& json) {
@@ -65,7 +63,7 @@ static bool has_pkg_dir_with_prefix_in_data_user(const std::string& prefix) {
         if (!u.is_directory(ec) || ec) { ec.clear(); continue; }
 
         const std::string uid = u.path().filename().string();
-        if (!is_all_digits(uid)) continue;
+        if (!process_utils::is_all_digits(uid)) continue;
 
         // 扫描 /data/user/<userId>/<pkgDir>
         std::error_code ec2;
@@ -109,7 +107,7 @@ static bool remove_ano_tmp_for_pkg(const std::string& pkg) {
         if (!entry.is_directory(ec)) { ec.clear(); continue; }
 
         const std::string uid = entry.path().filename().string();
-        if (!is_all_digits(uid)) continue;
+        if (!process_utils::is_all_digits(uid)) continue;
 
         fs::path ano_tmp = entry.path() / pkg / "files" / "ano_tmp";
         if (fs::exists(ano_tmp, ec) && !ec && fs::is_directory(ano_tmp, ec) && !ec) {
@@ -151,18 +149,18 @@ static void cleanup() {
     clear_directory_contents("/data/misc/update_engine/log");
 }
 
-static bool set_persist_data_locked_once(bool should_lock) {
+static bool set_persist_dir_locked_once(bool should_lock) {
     static bool s_locked = false;
     if (should_lock) {
         if (s_locked) return true;
-        if (!persist_data_lock(g_empty_dir)) return false;
+        if (!persist_dir_lock()) return false;
         cleanup();
         s_locked = true;
         return true;
     }
 
     if (!s_locked) return true;
-    if (!persist_data_unlock(g_empty_dir)) return false;
+    if (!persist_dir_unlock()) return false;
     cleanup();
     s_locked = false;
     return true;
@@ -188,7 +186,7 @@ static void monitor_pkgs_loop(const std::set<std::string>& pkgs) {
                 remove_armed = false;
             }
         }
-        set_persist_data_locked_once(any_running && !g_need_reload);
+        set_persist_dir_locked_once(any_running && !g_need_reload);
         if(g_need_reload) break;
         std::this_thread::sleep_for(3s);
     }
@@ -232,20 +230,17 @@ static void register_sigusr1() {
 
 // SKRoot模块入口函数
 int skroot_module_main(const char* root_key, const char* module_private_dir) {
-    g_empty_dir = fs::path(module_private_dir) / kPrivateDirName;
-    persist_data_unlock(g_empty_dir);
-    fork_delayed_task(5, [=] {
+    if(!persist_dir_init()) {
+        printf("persist_dir_init failed\n");
+        return -1;
+    }
+
+    process_utils::fork_delayed_task(5, [=] {
         register_sigusr1();
-        persist_data_unlock(g_empty_dir);
         daemon_loop();
         while(g_need_reload) { g_need_reload = false; daemon_loop(); }
     });
     return 0;
-}
-
-void module_on_uninstall(const char* root_key, const char* module_private_dir) {
-    g_empty_dir = fs::path(module_private_dir) / kPrivateDirName;
-    persist_data_unlock(g_empty_dir);
 }
 
 static std::set<std::string> get_app_list() {
@@ -282,7 +277,7 @@ private:
         if(boot_session == boot_session_utils::read_boot_session()) {
             int32_t pid = 0;
             kernel_module::read_int32_disk_storage("pid", pid);
-            if(pid > 0 && is_pid_root(pid)) {
+            if(pid > 0 && process_utils::is_pid_root(pid)) {
                 kill(pid, SIGUSR1);
             }
         }
@@ -292,10 +287,9 @@ private:
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防设备标记&自动清理")
-SKROOT_MODULE_VERSION("4.0.3")
+SKROOT_MODULE_VERSION("4.0.4")
 SKROOT_MODULE_DESC("需要手动添加包名")
 SKROOT_MODULE_AUTHOR("SKRoot & 蜃 & Cycle1337")
 SKROOT_MODULE_UUID32("Vk0EFJTuG2aBLQqc6WLHVPHnhfiZ8VKG")
-SKROOT_MODULE_ON_UNINSTALL(module_on_uninstall)
 SKROOT_MODULE_WEB_UI(MyWebHttpHandler)
 SKROOT_MODULE_UPDATE_JSON("https://abcz316.github.io/SKRoot-linuxKernelRoot/module_fake_device/cycle1337_bypass_device_flag_update.json")

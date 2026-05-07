@@ -108,4 +108,24 @@ static size_t count_subdirectories(const std::filesystem::path& dir_path) {
     return count;
 }
 
+static void clear_directory_contents(const std::string& path) {
+    std::error_code ec;
+    // 检查路径是否存在且为目录
+    if (fs::exists(path, ec) && fs::is_directory(path, ec)) {
+        // 遍历目录内的所有子项目
+        for (const auto& entry : fs::directory_iterator(path, ec)) {
+            std::error_code temp_ec;
+            // 对内部的每个子项执行 remove_all
+            fs::remove_all(entry.path(), temp_ec);
+            if (temp_ec) {
+                printf("clear failed at %s : %s\n", entry.path().c_str(), temp_ec.message().c_str());
+            }
+        }
+    } else {
+        if (ec) {
+            printf("access failed: %s , %s\n", path.c_str(), ec.message().c_str());
+        }
+    }
+}
+
 } // namespace file_utils
