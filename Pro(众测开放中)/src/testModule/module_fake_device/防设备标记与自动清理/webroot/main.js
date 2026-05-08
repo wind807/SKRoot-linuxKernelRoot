@@ -62,9 +62,11 @@ async function syncTargets() {
   try {
     els.barSub.textContent = `条数：${pkgs.length}（同步中…）`;
     const json = JSON.stringify(pkgs);
-    await RequestApi.setTargetPkgJson(json);
+    const info = await RequestApi.setTargetPkgJson(json);
     els.barSub.textContent = `条数：${pkgs.length}`;
-    showToast("立即生效", "success");
+    if(info == "OK") showToast("已生效", "success");
+    else alert('已保存成功，需要重启手机后生效');
+    
   } catch (e) {
     els.barSub.textContent = `条数：${pkgs.length}（同步失败）`;
     showToast("同步失败", "danger");

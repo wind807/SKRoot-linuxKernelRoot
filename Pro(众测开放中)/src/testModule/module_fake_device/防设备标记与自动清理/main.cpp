@@ -278,17 +278,20 @@ private:
             int32_t pid = 0;
             kernel_module::read_int32_disk_storage("pid", pid);
             if(pid > 0 && process_utils::is_pid_root(pid)) {
-                kill(pid, SIGUSR1);
+                if (::kill(pid, SIGUSR1) == 0) {
+                    return "OK";
+                }
+                printf("kill SIGUSR1 failed, pid=%d, errno=%d, err=%s", pid, errno, strerror(errno));
             }
         }
-        return resp;
+        return "FAILED";
     }
 };
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防设备标记&自动清理")
-SKROOT_MODULE_VERSION("4.0.5")
-SKROOT_MODULE_DESC("需要手动添加包名")
+SKROOT_MODULE_VERSION("4.0.6")
+SKROOT_MODULE_DESC("需手动添加目标包名。开启成功判断：/mnt/vendor/persist/data目录下文件为空、且无法新建文件，则表示拦截已生效。本模块采用内核级拦截技术，不改目录权限。")
 SKROOT_MODULE_AUTHOR("SKRoot & 蜃 & Cycle1337")
 SKROOT_MODULE_UUID32("Vk0EFJTuG2aBLQqc6WLHVPHnhfiZ8VKG")
 SKROOT_MODULE_WEB_UI(MyWebHttpHandler)
