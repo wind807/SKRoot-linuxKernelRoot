@@ -291,7 +291,7 @@ private:
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防设备标记&自动清理")
 SKROOT_MODULE_VERSION("4.0.6")
-SKROOT_MODULE_DESC("需手动添加目标包名。开启成功判断：/mnt/vendor/persist/data目录下文件为空、且无法新建文件，则表示拦截已生效。本模块采用内核级拦截技术，不改目录权限。")
+SKROOT_MODULE_DESC("需手动添加目标包名。开启成功判断：/mnt/vendor/persist/data目录下文件为空，且无法新建文件，则表示拦截已生效。本模块采用内核级拦截技术，不改目录权限。")
 SKROOT_MODULE_AUTHOR("SKRoot & 蜃 & Cycle1337")
 SKROOT_MODULE_UUID32("Vk0EFJTuG2aBLQqc6WLHVPHnhfiZ8VKG")
 SKROOT_MODULE_WEB_UI(MyWebHttpHandler)
