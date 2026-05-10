@@ -11,7 +11,8 @@
 
 using namespace file_utils;
 
-static bool g_need_reload = false;
+std::string g_root_key;
+static volatile sig_atomic_t g_need_reload = 0;
 
 // 把 ["aa","bb","cc"] 解析成 std::set<std::string>
 static std::set<std::string> parse_json(const std::string& json) {
@@ -119,49 +120,17 @@ static bool remove_ano_tmp_for_pkg(const std::string& pkg) {
     return hit_any;
 }
 
-static void cleanup() {
-    // 等价于：
-    // echo 16384 > /proc/sys/fs/inotify/max_queued_events
-    // echo 128 > /proc/sys/fs/inotify/max_user_instances
-    // echo 8192 > /proc/sys/fs/inotify/max_user_watches
-    write_text_file("/proc/sys/fs/inotify/max_queued_events", "16384\n");
-    write_text_file("/proc/sys/fs/inotify/max_user_instances", "128\n");
-    write_text_file("/proc/sys/fs/inotify/max_user_watches", "8192\n");
-
-    // 等价于：
-    // rm -rf /data/system/dropbox/*
-    // rm -rf /data/system/usagestats/*
-    // rm -rf /data/system/appops.xml
-    // rm -rf /data/system/ifw/*
-    // rm -rf /data/system/ndebugsocket/*
-    // rm -rf /data/anr/*
-    // rm -rf /data/tombstones/*
-    // rm -rf /data/misc/logd/*
-    // rm -rf /data/misc/update_engine/log/*
-    clear_directory_contents("/data/system/dropbox");
-    clear_directory_contents("/data/system/usagestats");
-    delete_path("/data/system/appops.xml");
-    clear_directory_contents("/data/system/ifw");
-    clear_directory_contents("/data/system/ndebugsocket");
-    clear_directory_contents("/data/anr");
-    clear_directory_contents("/data/tombstones");
-    clear_directory_contents("/data/misc/logd");
-    clear_directory_contents("/data/misc/update_engine/log");
-}
-
 static bool set_persist_dir_locked_once(bool should_lock) {
     static bool s_locked = false;
     if (should_lock) {
         if (s_locked) return true;
         if (!persist_dir_lock()) return false;
-        cleanup();
         s_locked = true;
         return true;
     }
 
     if (!s_locked) return true;
     if (!persist_dir_unlock()) return false;
-    cleanup();
     s_locked = false;
     return true;
 }
@@ -192,15 +161,20 @@ static void monitor_pkgs_loop(const std::set<std::string>& pkgs) {
     }
 }
 
+
 static void daemon_loop() {
+    printf("start daemon loop, pid=%ld\n", static_cast<long>(getpid()));
     std::string json;
     kernel_module::read_string_disk_storage("target_pkg_json", json);
     std::set<std::string> target_pkg_list = parse_json(json);
-    printf("target pkg list (%zd total) :\n", target_pkg_list.size());
-    
+    printf("target pkg list (%zu total), top 5:\n", target_pkg_list.size());
+    size_t max_count = target_pkg_list.size() > 5 ? 5 : target_pkg_list.size();
+    auto it = target_pkg_list.begin();
+    for (size_t i = 0; i < max_count; ++i, ++it) {
+        printf("%s\n", it->c_str());
+    }
     kernel_module::write_int32_disk_storage("pid", (int)getpid());
     kernel_module::write_string_disk_storage("boot_session", boot_session_utils::read_boot_session().c_str());
-
     wait_decrypted_and_run([&target_pkg_list]{
         printf("data user decrypted!\n");
         sleep(10);
@@ -209,15 +183,15 @@ static void daemon_loop() {
             printf("target pkg: %s\n", pkg.c_str());
             remove_ano_tmp_for_pkg(pkg);
         }
-        cleanup();
         monitor_pkgs_loop(target_pkg_list);
     });
 }
 
 static void on_sigusr1(int signo) {
     (void)signo;
-    printf("recv signUser1: reload pkgs\n");
-    g_need_reload = true;
+    const char msg[] = "recv signUser1: reload pkgs\n";
+    write(STDOUT_FILENO, msg, sizeof(msg) - 1); 
+    g_need_reload = 1;
 }
 
 static void register_sigusr1() {
@@ -226,19 +200,26 @@ static void register_sigusr1() {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     sigaction(SIGUSR1, &sa, nullptr);
+
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR1);
+    sigprocmask(SIG_UNBLOCK, &set, nullptr);
 }
 
 // SKRoot模块入口函数
 int skroot_module_main(const char* root_key, const char* module_private_dir) {
+    g_root_key = root_key;
     if(!persist_dir_init()) {
-        printf("persist_dir_init failed\n");
-        return -1;
+       printf("persist_dir_init failed\n");
+       return -1;
     }
 
     process_utils::fork_delayed_task(5, [=] {
+        skroot_env::get_root(g_root_key.c_str());
         register_sigusr1();
         daemon_loop();
-        while(g_need_reload) { g_need_reload = false; daemon_loop(); }
+        while(g_need_reload) { g_need_reload = 0; daemon_loop(); }
     });
     return 0;
 }
@@ -271,27 +252,47 @@ public:
 
 private:
     std::string onSetTargetPkgJson(const std::string& body) {
-        std::string resp = is_ok(kernel_module::write_string_disk_storage("target_pkg_json", body.c_str())) ? "OK" : "FAILED";
+        bool write_ok = is_ok(kernel_module::write_string_disk_storage("target_pkg_json", body.c_str()));
+        if (!write_ok) {
+            printf("write target_pkg_json failed\n");
+            return "FAILED";
+        }
         std::string boot_session;
         kernel_module::read_string_disk_storage("boot_session", boot_session);
-        if(boot_session == boot_session_utils::read_boot_session()) {
-            int32_t pid = 0;
-            kernel_module::read_int32_disk_storage("pid", pid);
-            if(pid > 0 && process_utils::is_pid_root(pid)) {
-                if (::kill(pid, SIGUSR1) == 0) {
-                    return "OK";
-                }
-                printf("kill SIGUSR1 failed, pid=%d, errno=%d, err=%s", pid, errno, strerror(errno));
-            }
+
+        std::string current_boot_session = boot_session_utils::read_boot_session();
+        if (boot_session != current_boot_session) {
+            printf("boot_session mismatch, saved=%s, current=%s\n", boot_session.c_str(), current_boot_session.c_str());
+            return "FAILED";
         }
+        
+        int32_t pid = 0;
+        kernel_module::read_int32_disk_storage("pid", pid);
+        if (pid <= 0) {
+            printf("invalid daemon pid, pid=%d\n", pid);
+            return "FAILED";
+        }
+
+        if (!process_utils::is_pid_root(pid)) {
+            printf("daemon pid is not root or not alive, pid=%d\n", pid);
+            return "FAILED";
+        }
+        printf("send SIGUSR1 to daemon, pid=%d\n", pid);
+
+        if (::kill(pid, SIGUSR1) == 0) {
+            printf("send SIGUSR1 success, pid=%d\n", pid);
+            return "OK";
+        }
+        int err = errno;
+        printf("kill SIGUSR1 failed, pid=%d, errno=%d, err=%s\n", pid, err, strerror(err));
         return "FAILED";
     }
 };
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防设备标记&自动清理")
-SKROOT_MODULE_VERSION("4.0.6")
-SKROOT_MODULE_DESC("需手动添加目标包名。开启成功判断：/mnt/vendor/persist/data目录下文件为空，且无法新建文件，则表示拦截已生效。本模块采用内核级拦截技术，不改目录权限。")
+SKROOT_MODULE_VERSION("5.0.0")
+SKROOT_MODULE_DESC("需手动添加目标包名。判断开启成功：/mnt/vendor/persist/data目录下文件为空、无法写入文件，表示拦截已生效。本模块采用内核拦截技术，不改目录权限。")
 SKROOT_MODULE_AUTHOR("SKRoot & 蜃 & Cycle1337")
 SKROOT_MODULE_UUID32("Vk0EFJTuG2aBLQqc6WLHVPHnhfiZ8VKG")
 SKROOT_MODULE_WEB_UI(MyWebHttpHandler)
