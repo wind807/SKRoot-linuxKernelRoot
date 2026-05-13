@@ -14,7 +14,14 @@ namespace kernel_module {
 *       vm_end_offset      输出参数，返回 vm_end 字段相对于 vm_area_struct 起始的偏移量（字节）
 * 返回: OK 表示成功；其它值为错误码
 ***************************************************************************/
-KModErr get_vm_area_struct_vm_offset(uint32_t & vm_start_offset, uint32_t & vm_end_offset);
+KModErr get_vm_area_struct_vm_start_offset(uint32_t & vm_start_offset, uint32_t & vm_end_offset);
+
+/***************************************************************************
+* 获取 vm_area_struct 结构体中 vm_mm 字段的偏移量
+* 参数: offset      输出参数，返回 vm_mm 字段相对于 vm_area_struct 起始的偏移量（字节）
+* 返回: OK 表示成功；其它值为错误码
+***************************************************************************/
+KModErr get_vm_area_struct_vm_mm_offset(uint32_t & offset);
 
 /***************************************************************************
 * 获取 vm_area_struct 结构体中 vm_flags 字段的偏移量

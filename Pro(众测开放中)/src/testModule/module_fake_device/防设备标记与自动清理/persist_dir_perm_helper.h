@@ -16,7 +16,7 @@
 #include <errno.h>
 
 #include "kernel_module_kit_umbrella.h"
-#include "patch_inode_permission.h"
+#include "patch_selinux_inode_permission.h"
 
 namespace fs = std::filesystem;
 uint64_t g_persist_dir_lock_control_kaddr = 0;
@@ -34,11 +34,11 @@ namespace _deatil {
     }
 
     static KModErr patch_kernel_handler(uint64_t control_kaddr) {
-        uint64_t inode_permission = 0;
-        RETURN_IF_ERROR(kernel_module::kallsyms_lookup_name("inode_permission", inode_permission));
-        printf("inode_permission addr: %p\n", (void*)inode_permission);
+        uint64_t selinux_inode_permission = 0;
+        RETURN_IF_ERROR(kernel_module::kallsyms_lookup_name("selinux_inode_permission", selinux_inode_permission));
+        printf("selinux_inode_permission addr: %p\n", (void*)selinux_inode_permission);
 
-        InodePermissionPatchOffsets off = {};
+        InodePatchOffsets off = {};
         RETURN_IF_ERROR(kernel_module::get_inode_i_ino_offset(off.inode_i_ino));
         printf("i_ino offset: 0x%x\n", off.inode_i_ino);
 
@@ -57,9 +57,9 @@ namespace _deatil {
         printf("persist s_dev: %llu\n", (unsigned long long)st.st_dev); 
 
         PatchBase patchBase;
-        PatchInodePermission patchInodePermission(patchBase, inode_permission);
-        KModErr err = patchInodePermission.patch_inode_permission(st.st_ino, user_rdev_to_kernel_dev(st.st_dev), control_kaddr, off);
-        printf("patch inode_permission addr: %p ret: %s\n", (void*)inode_permission, to_string(err).c_str());
+        PatchSelinuxInodePermission p(patchBase, selinux_inode_permission);
+        KModErr err = p.patch_selinux_inode_permission(st.st_ino, user_rdev_to_kernel_dev(st.st_dev), control_kaddr, off);
+        printf("patch selinux_inode_permission addr: %p ret: %s\n", (void*)selinux_inode_permission, to_string(err).c_str());
         RETURN_IF_ERROR(err);
         return KModErr::OK;
     }

@@ -141,7 +141,7 @@ static void monitor_pkgs_loop(const std::set<std::string>& pkgs) {
     for (;;) {
         bool any_running = false;
         for (const auto& pkg : pkgs) {
-            const bool running = is_pkg_running(pkg, 250 * 1024); // 忽略250MB以下的
+            const bool running = is_pkg_running(pkg, 200 * 1024); // 忽略200MB以下的
             if (running) {
                 any_running = true;
                 if(!s_pkg_remove_armed[pkg]) printf("detect running:%s\n", pkg.c_str());
@@ -216,6 +216,10 @@ int skroot_module_main(const char* root_key, const char* module_private_dir) {
     }
 
     process_utils::fork_delayed_task(5, [=] {
+        if (setsid() < 0) {
+            setpgid(0, 0); 
+        }
+        signal(SIGPIPE, SIG_IGN);
         skroot_env::get_root(g_root_key.c_str());
         register_sigusr1();
         daemon_loop();
@@ -291,7 +295,7 @@ private:
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防设备标记&自动清理")
-SKROOT_MODULE_VERSION("5.0.0")
+SKROOT_MODULE_VERSION("5.0.2")
 SKROOT_MODULE_DESC("需手动添加目标包名。判断开启成功：/mnt/vendor/persist/data目录下文件为空、无法写入文件，表示拦截已生效。本模块采用内核拦截技术，不改目录权限。")
 SKROOT_MODULE_AUTHOR("SKRoot & 蜃 & Cycle1337")
 SKROOT_MODULE_UUID32("Vk0EFJTuG2aBLQqc6WLHVPHnhfiZ8VKG")

@@ -43,6 +43,7 @@ public class SkrModUpdateChecker {
             @Override
             public void onSuccess(String content) {
                 try {
+                    SkrModUpdateCache.saveModuleUpdateResponseCache(item, content);
                     SkrModUpdateInfo updateInfo = parse(content, item.getVer());
                     if (onSuccessUi != null) activity.runOnUiThread(() -> onSuccessUi.accept(item, updateInfo));
                 } catch (Exception e) {
@@ -92,8 +93,7 @@ public class SkrModUpdateChecker {
     /**
      * 批量检查所有模块更新
      */
-    public void checkAllModulesUpdate(
-            List<SkrModInstalledItem> allModules,
+    public void checkAllModulesUpdate(List<SkrModInstalledItem> allModules,
             BiConsumer<SkrModInstalledItem, SkrModUpdateInfo> onEachSuccessUi,
             BiConsumer<SkrModInstalledItem, Exception> onEachErrorUi
     ) {
@@ -116,12 +116,25 @@ public class SkrModUpdateChecker {
     }
 
     /**
+     * 批量检查所有模块更新（缓存）
+     */
+    public void getAllModulesUpdateCache(List<SkrModInstalledItem> allModules,
+            BiConsumer<SkrModInstalledItem, SkrModUpdateInfo> onEachSuccessUi) {
+        if (allModules == null || allModules.isEmpty()) return;
+        for (SkrModInstalledItem item : allModules) {
+            // 没有配置 updateJson 的直接跳过
+            if (item.getUpdateJson() == null || item.getUpdateJson().isEmpty()) continue;
+            SkrModUpdateInfo info = SkrModUpdateCache.getModuleUpdateResponseCache(item);
+            if (onEachSuccessUi != null) onEachSuccessUi.accept(item, info);
+        }
+    }
+    /**
      * 解析服务器返回的模块更新 JSON，并结合当前版本号，生成 SkrModUpdateInfo
      *
      * @param jsonStr        服务器返回的 JSON 字符串
      * @param currentVersion 当前本地模块版本号，例如 "0.9.0"
      */
-    private SkrModUpdateInfo parse(String jsonStr, String currentVersion) throws JSONException {
+    public static SkrModUpdateInfo parse(String jsonStr, String currentVersion) throws JSONException {
         if (jsonStr == null || jsonStr.trim().isEmpty()) return null;
 
         JSONObject obj = new JSONObject(jsonStr);

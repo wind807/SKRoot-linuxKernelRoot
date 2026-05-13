@@ -7,13 +7,13 @@
 #include <string_view>
 #include <thread>
 
+#include "kernel_module_kit_umbrella.h"
 class SuInteractive {
 public:
     SuInteractive();
     ~SuInteractive();
 
-    SuInteractive(const SuInteractive&) = delete;
-    SuInteractive& operator=(const SuInteractive&) = delete;
+    DISABLE_COPY_MOVE(SuInteractive);
 
     // 启动 su；stderr 会合并到 stdout
     bool start();

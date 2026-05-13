@@ -65,6 +65,7 @@ public class SkrModInstalledAdapter extends RecyclerView.Adapter<SkrModInstalled
         holder.tvStatus.setText(
                 state == SkrModRunState.RUNNING ? "运行中" :
                         state == SkrModRunState.ABNORMAL ? "运行异常" :
+                        state == SkrModRunState.REMOVED_PENDING_REBOOT ? "已删除，待重启" :
                                 "未启动"
         );
         holder.tvStatus.setTextColor(

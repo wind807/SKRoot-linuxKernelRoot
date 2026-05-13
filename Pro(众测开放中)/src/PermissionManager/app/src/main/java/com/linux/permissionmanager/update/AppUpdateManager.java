@@ -3,8 +3,11 @@ package com.linux.permissionmanager.update;
 import android.app.Activity;
 import android.text.TextUtils;
 
+import com.linux.permissionmanager.AppSettings;
 import com.linux.permissionmanager.BuildConfig;
 import com.linux.permissionmanager.model.AppUpdateInfo;
+import com.linux.permissionmanager.model.SkrModInstalledItem;
+import com.linux.permissionmanager.model.SkrModUpdateInfo;
 import com.linux.permissionmanager.utils.NetUtils;
 
 import org.json.JSONException;
@@ -30,10 +33,12 @@ public class AppUpdateManager {
             public void onSuccess(String content) {
                 try {
                     AppUpdateInfo updateInfo = parseAppUpdateJson(content, BuildConfig.VERSION_NAME);
-                    if (onSuccessUi != null) activity.runOnUiThread(() -> onSuccessUi.accept(updateInfo));
+                    activity.runOnUiThread(() -> {
+                        saveAppUpdateResponseCache(content);
+                        if (onSuccessUi != null) onSuccessUi.accept(updateInfo);
+                    });
                 } catch (Exception e) { onError(e); }
             }
-
             @Override
             public void onError(Exception e) {
                 if (onErrorUi != null) activity.runOnUiThread(() -> onErrorUi.accept(e));
@@ -78,5 +83,18 @@ public class AppUpdateManager {
         if (latestVer.isEmpty() || downloadUrl.isEmpty()) return null;
         boolean hasNew = !latestVer.equals(currentVersion);
         return new AppUpdateInfo(hasNew, latestVer, downloadUrl, changelogUrl);
+    }
+
+    public AppUpdateInfo getAppUpdateResponseCache() {
+        String jsonStr = AppSettings.getString("app_update_cache", "");
+        try {
+            return parseAppUpdateJson(jsonStr, BuildConfig.VERSION_NAME);
+        } catch (Exception e) {}
+        return null;
+    }
+
+    private void saveAppUpdateResponseCache(String jsonStr) {
+        if (TextUtils.isEmpty(jsonStr)) return;
+        AppSettings.setString("app_update_cache", jsonStr);
     }
 }

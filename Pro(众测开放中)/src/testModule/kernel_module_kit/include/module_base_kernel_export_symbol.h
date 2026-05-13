@@ -35,8 +35,11 @@
 namespace kernel_module {
 namespace export_symbol {
 using namespace asmjit::a64;
-// 原型：struct task_struct *current(void); 获取current指针并赋值到寄存器x，需判空，因为kthread无法获取。无返回值。
+// 原型：struct task_struct *current(void); 获取current指针并赋值到寄存器out_regs，需判空，因为kthread无法获取。无返回值。
 void get_current(Assembler* a, GpX out_regs);
+
+// 获取当前线程的 thread_info 指针并赋值到寄存器 out_regs。需判空，无返回值。
+void get_current_thread_info(Assembler* a, GpX out_regs);
 
 // 原型：unsigned long copy_from_user(void *to, const void __user *from, unsigned long n); 返回值为 X0 寄存器
 void copy_from_user(Assembler* a, KModErr& out_err, GpX to, GpX __user_from, GpX n);
@@ -303,6 +306,10 @@ void vmalloc_to_pfn(Assembler* a, KModErr& out_err, GpX vmalloc_addr);
 // 原型：#define pfn_pte(pfn, prot); 返回值为 X0 寄存器
 void pfn_pte(Assembler* a, GpX pfn, GpX prot);
 void pfn_pte(Assembler* a, GpX pfn, uint64_t prot_val);
+
+// 原型：struct block_device *I_BDEV(struct inode *inode); 返回值为 X0 寄存器
+void I_BDEV(Assembler* a, KModErr& out_err, GpX inode);
+void I_BDEV(Assembler* a, KModErr& out_err, uint64_t inode_kaddr);
 
 // 原型：void dump_stack(void); 无返回值
 void dump_stack(Assembler* a, KModErr& out_err);

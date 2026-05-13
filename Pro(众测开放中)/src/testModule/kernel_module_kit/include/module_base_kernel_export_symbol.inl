@@ -38,14 +38,20 @@ inline bool is_huawei_b9277bc3a432f95fbc688de2bcd203d1() {
 
 inline void emit_huawei_kti_add_ce72c7e634f27712ee84f3dd5e8e0ec9(Assembler* a, GpX x) {
 	if (!is_huawei_b9277bc3a432f95fbc688de2bcd203d1()) return;
-	RegProtectGuard g1(a, x1);
+	static bool kallsyms_lookup_huawei_failed = true;
+	static bool inited = false;
+	if(inited && kallsyms_lookup_huawei_failed) return;
+	inited = true;
+	SymbolLookupPrintfGuard_8dfccc5cf454087c7314725d3487e703 pg;
 	uint64_t kti_randomize_init_kaddr = 0;
 	uint64_t kti_offset_kaddr = 0;
     if(is_failed(kernel_module::kallsyms_lookup_name("kti_randomize_init", kti_randomize_init_kaddr))) return;
     if(is_failed(kernel_module::kallsyms_lookup_name("kti_offset", kti_offset_kaddr))) return;
+	RegProtectGuard g1(a, x1);
 	aarch64_asm_mov_x(a, x1, kti_offset_kaddr);
 	a->ldr(x1, ptr(x1));
 	a->add(x, x, x1);
+	kallsyms_lookup_huawei_failed = false;
 }
 
 inline void get_current(Assembler* a, GpX out_regs) {
@@ -71,6 +77,24 @@ inline void get_current(Assembler* a, GpX out_regs) {
 	a->mov(out_regs, sp);
 	a->and_(out_regs, out_regs, Imm((uint64_t)~(kThreadSize - 1)));
 	a->ldr(out_regs, ptr(out_regs, offsetof(thread_info, task)));
+}
+
+inline void get_current_thread_info(Assembler* a, GpX out_regs) {
+	constexpr uint64_t kThreadSize = 0x4000;
+	Label label_error = a->newLabel();
+	uint32_t sp_el0_id = SysReg::encode(3, 0, 4, 1, 0);
+	if (kernel_module::is_CONFIG_THREAD_INFO_IN_TASK()) {
+		a->mrs(out_regs, sp_el0_id);
+		emit_huawei_kti_add_ce72c7e634f27712ee84f3dd5e8e0ec9(a, out_regs);
+		return;
+	}
+	if (kernel_module::is_CURRENT_FROM_SP_EL0_THREAD_INFO()) {
+		a->mrs(out_regs, sp_el0_id);
+		emit_huawei_kti_add_ce72c7e634f27712ee84f3dd5e8e0ec9(a, out_regs);
+		return;
+	}
+	a->mov(out_regs, sp);
+	a->and_(out_regs, out_regs, Imm((uint64_t)~(kThreadSize - 1)));
 }
 
 static const std::vector<std::string> copy_from_user_symbol_names = {
@@ -737,6 +761,17 @@ inline void pfn_pte(Assembler* a, GpX pfn, uint64_t prot_val) {
 	GpX xProt = pool.acquireX();
 	aarch64_asm_mov_x(a, xProt, prot_val);
 	pfn_pte(a, pfn, xProt);
+}
+
+inline void I_BDEV(Assembler* a, KModErr& out_err, GpX inode) {
+	out_err = CallHelper::callNameAuto(a, "I_BDEV", NeedReturnX0::Yes, inode);
+}
+
+inline void I_BDEV(Assembler* a, KModErr& out_err, uint64_t inode_kaddr) {
+	IdleRegPool pool = IdleRegPool::make();
+	GpX xInode = pool.acquireX();
+	aarch64_asm_mov_x(a, xInode, inode_kaddr);
+	I_BDEV(a, out_err, xInode);
 }
 
 inline void dump_stack(Assembler* a, KModErr& out_err) {

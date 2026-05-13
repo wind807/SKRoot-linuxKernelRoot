@@ -1,4 +1,4 @@
-﻿#include "patch_inode_permission.h"
+﻿#include "patch_selinux_inode_permission.h"
 #include <vector>
 using namespace asmjit;
 using namespace asmjit::a64;
@@ -37,13 +37,12 @@ android版本的差异内核源码浏览：
 
 #define	EACCES		13	/* Permission denied */
 
-PatchInodePermission::PatchInodePermission(const PatchBase& patch_base, uint64_t inode_permission) : PatchBase(patch_base), m_inode_permission(inode_permission) {}
+PatchSelinuxInodePermission::PatchSelinuxInodePermission(const PatchBase& patch_base, uint64_t selinux_inode_permission) : PatchBase(patch_base), m_selinux_inode_permission(selinux_inode_permission) {}
 
-PatchInodePermission::~PatchInodePermission() {}
+PatchSelinuxInodePermission::~PatchSelinuxInodePermission() {}
 
-KModErr PatchInodePermission::patch_inode_permission(uint64_t target_i_ino, uint32_t target_s_dev, uint64_t control_kaddr, const InodePermissionPatchOffsets& off) {
+KModErr PatchSelinuxInodePermission::patch_selinux_inode_permission(uint64_t target_i_ino, uint32_t target_s_dev, uint64_t control_kaddr, const InodePatchOffsets& off) {
 	GpX x0_inode = x0;
-	GpX x1_inode = x1;
 
 	// 生成Hook func汇编命令
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
@@ -57,15 +56,9 @@ KModErr PatchInodePermission::patch_inode_permission(uint64_t target_i_ino, uint
 	a->ldrb(w10, ptr(x10));
 	a->cbz(w10, L_normal);
 
-	if (kernel_module::is_kernel_version_less("5.12.0")) {
-		a->mov(x10, x0_inode);
-	} else {
-		a->mov(x10, x1_inode);
-	}
-
 	// check inode->i_ino
 	aarch64_asm_mov_x(a, x11, (uint64_t)off.inode_i_ino);
-	a->add(x11, x10, x11);
+	a->add(x11, x0_inode, x11);
 	a->ldr(x11, ptr(x11)); // ARM64 Linux内核里inode->i_ino是64位。
 
 	aarch64_asm_mov_x(a, x12, target_i_ino);
@@ -76,7 +69,7 @@ KModErr PatchInodePermission::patch_inode_permission(uint64_t target_i_ino, uint
 	// check inode->i_sb->s_dev
 	aarch64_asm_mov_x(a, x11, (uint64_t)off.inode_i_sb);
 	aarch64_asm_mov_x(a, x12, (uint64_t)off.super_block_s_dev);
-	a->add(x11, x10, x11);
+	a->add(x11, x0_inode, x11);
 	a->ldr(x11, ptr(x11));
 	a->add(x12, x11, x12);
 	a->ldr(w12, ptr(x12));
@@ -89,5 +82,5 @@ KModErr PatchInodePermission::patch_inode_permission(uint64_t target_i_ino, uint
 	
 	a->bind(L_normal);
 	kernel_module::arm64_before_hook_end(a, true); // 正常返回
-	return patch_kernel_before_hook(m_inode_permission, a);
+	return patch_kernel_before_hook(m_selinux_inode_permission, a);
 }

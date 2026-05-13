@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -29,6 +30,7 @@ public class SettingsFragment extends Fragment {
     private String mRootKey = "";
 
     private CheckBox mCkboxEnableBootFailProtect;
+    private CheckBox mCkboxAdbForcedDisabled;
     private Button mBtnTestSkrootBasics;
     private Button mBtnTestSkrootDefaultModule;
     private Button mBtnReboot;
@@ -49,6 +51,8 @@ public class SettingsFragment extends Fragment {
     public SettingsFragment(Activity activity, String rootKey) {
         mActivity = activity;
         mRootKey = rootKey;
+        mUpdateManager = new AppUpdateManager(mActivity);
+        initUpdateBlock(false);
     }
 
     @Nullable
@@ -63,6 +67,7 @@ public class SettingsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         mCkboxEnableBootFailProtect = view.findViewById(R.id.enable_boot_fail_protect_ckbox);
+        mCkboxAdbForcedDisabled = view.findViewById(R.id.adb_forced_disabled_ckbox);
         mBtnTestSkrootBasics = view.findViewById(R.id.test_skroot_basics_btn);
         mBtnTestSkrootDefaultModule = view.findViewById(R.id.test_skroot_default_module_btn);
         mBtnReboot = view.findViewById(R.id.reboot_btn);
@@ -90,9 +95,17 @@ public class SettingsFragment extends Fragment {
                     DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
                 }
         );
+        mCkboxAdbForcedDisabled.setOnCheckedChangeListener(null);
+        mCkboxAdbForcedDisabled.setChecked(NativeBridge.isAdbForcedDisabled(mRootKey));
+        mCkboxAdbForcedDisabled.setOnCheckedChangeListener(
+                (v, isChecked) -> {
+                    String tip = NativeBridge.setAdbForcedDisabled(mRootKey, isChecked);
+                    DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
+                }
+        );
         mBtnTestSkrootBasics.setOnClickListener((v) -> showSelectTestSkrootBasicsDlg());
         mBtnTestSkrootDefaultModule.setOnClickListener((v) -> showSelectTestDefaultModuleDlg());
-        mBtnReboot.setOnClickListener((v) -> showConfirmRestartZygote64());
+        mBtnReboot.setOnClickListener(this::showRebootPopupMenu);
 
         mCkboxEnableSkrootLog.setOnCheckedChangeListener(null);
         mCkboxEnableSkrootLog.setChecked(NativeBridge.isSkrootLogEnabled(mRootKey));
@@ -104,10 +117,9 @@ public class SettingsFragment extends Fragment {
         );
         mBtnShowSkrootLog.setOnClickListener(v -> showSkrootLogDlg());
         mBtnClearSkrootLog.setOnClickListener(v -> clearSkrootLog());
-        mUpdateManager = new AppUpdateManager(mActivity);
         initAboutText();
         initLink();
-        initUpdateBlock();
+        initUpdateBlock(true);
     }
 
     private void showSelectTestSkrootBasicsDlg() {
@@ -163,16 +175,54 @@ public class SettingsFragment extends Fragment {
         dialog.show();
     }
 
-    private void showConfirmRestartZygote64() {
-        DialogUtils.showCustomDialog(mActivity, "确认", "确定要软重启吗？", null,"确定",
-                (dialog, which) -> {
+    private enum RebootAction {
+        NORMAL(R.id.reboot_normal, "普通重启", "setprop sys.powerctl reboot", false),
+        SOFT(R.id.reboot_soft, "软重启", null, true),
+        RECOVERY(R.id.reboot_recovery, "重启到 Recovery", "setprop sys.powerctl reboot,recovery", false),
+        BOOTLOADER(R.id.reboot_bootloader, "重启到 Fastboot", "setprop sys.powerctl reboot,bootloader", false),
+        FASTBOOTD(R.id.reboot_fastbootd, "重启到 FastbootD", "setprop sys.powerctl reboot,fastboot", false);
+        final int menuId;
+        final String title;
+        final String cmd;
+        final boolean softReboot;
+        RebootAction(int menuId, String title, String cmd, boolean softReboot) {
+            this.menuId = menuId;
+            this.title = title;
+            this.cmd = cmd;
+            this.softReboot = softReboot;
+        }
+        static RebootAction fromMenuId(int menuId) {
+            for (RebootAction action : values()) {
+                if (action.menuId == menuId) return action;
+            }
+            return null;
+        }
+    }
+
+    private void showRebootPopupMenu(View anchor) {
+        PopupMenu popupMenu = new PopupMenu(mActivity, anchor);
+        popupMenu.getMenuInflater().inflate(R.menu.popup_reboot_item_menu, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> {
+            RebootAction action = RebootAction.fromMenuId(item.getItemId());
+            if (action == null) return false;
+            showConfirmRebootDialog(action);
+            return true;
+        });
+        popupMenu.show();
+    }
+    private void showConfirmRebootDialog(RebootAction action) {
+        DialogUtils.showCustomDialog(mActivity,"确认", "确定要" + action.title + "吗？",null,
+                "确定", (dialog, which) -> {
                     dialog.dismiss();
-                    String tip = NativeBridge.restartZygote64(mRootKey);
+                    String tip = runRebootAction(action);
                     DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
-                },"取消", (dialog, which) -> {
-                    dialog.dismiss();
-                }
+                },"取消", (dialog, which) -> dialog.dismiss()
         );
+    }
+
+    private String runRebootAction(RebootAction action) {
+        if (action.softReboot) return NativeBridge.restartZygote64(mRootKey);
+        return NativeBridge.runRootCmd(mRootKey, action.cmd);
     }
 
     private void showSkrootLogDlg() {
@@ -208,28 +258,47 @@ public class SettingsFragment extends Fragment {
         );
     }
 
-    private void initUpdateBlock() {
+    private void showAppUpdateInfo(AppUpdateInfo info) {
+        if (info == null || !info.isHasNewVersion()) return;
+        mTvUpdateBlock.setVisibility(View.VISIBLE);
+        mTvUpdateFound.setText("发现新版本：" + info.getLatestVer());
+        mTvUpdateChangelog.setOnClickListener(v -> onDownloadChangeLogApp(info));
+        mTvUpdateDownload.setOnClickListener(v -> UrlIntentUtils.openUrl(mActivity, info.getDownloadUrl()));
+    }
+
+    private void showAppUpdateDialog(AppUpdateInfo info) {
+        if (info == null || !info.isHasNewVersion()) return;
+        DialogUtils.showCustomDialog(
+                mActivity, "提示", "发现新版本：" + info.getLatestVer(), null, "确定",
+                (dialog, which) -> {
+                    UrlIntentUtils.openUrl(mActivity, info.getDownloadUrl());
+                    dialog.dismiss();
+                },"取消", (dialog, which) -> dialog.dismiss()
+        );
+    }
+
+    private void initUpdateBlock(boolean updateUI) {
+        if (updateUI) {
+            makeUnderline(mTvUpdateChangelog);
+            makeUnderline(mTvUpdateDownload);
+        }
+        final boolean[] updateDialogShown = {false};
+        AppUpdateInfo cacheInfo = mUpdateManager.getAppUpdateResponseCache();
+        if (cacheInfo != null && cacheInfo.isHasNewVersion()) {
+            if (updateUI) showAppUpdateInfo(cacheInfo);
+            showAppUpdateDialog(cacheInfo);
+            updateDialogShown[0] = true;
+        }
         mUpdateManager.requestAppUpdate(
                 (info) -> {
                     if (info == null || !info.isHasNewVersion()) return;
-                    mTvUpdateBlock.setVisibility(View.VISIBLE);
-                    mTvUpdateFound.setText("发现新版本：" + info.getLatestVer());
-                    mTvUpdateChangelog.setOnClickListener(v -> onDownloadChangeLogApp(info));
-                    mTvUpdateDownload.setOnClickListener(v -> UrlIntentUtils.openUrl(mActivity, info.getDownloadUrl()));
-                    DialogUtils.showCustomDialog(
-                            mActivity, "提示", "发现新版本：" + info.getLatestVer(),null,"确定",
-                            (dialog, which) -> {
-                                UrlIntentUtils.openUrl(mActivity, info.getDownloadUrl());
-                                dialog.dismiss();
-                            },
-                            "取消",
-                            (dialog, which) -> dialog.dismiss()
-                    );
-                },
-                (e) -> {}
+                    if (updateUI) showAppUpdateInfo(info);
+                    if (!updateDialogShown[0]) {
+                        updateDialogShown[0] = true;
+                        showAppUpdateDialog(info);
+                    }
+                }, (e) -> {}
         );
-        makeUnderline(mTvUpdateChangelog);
-        makeUnderline(mTvUpdateDownload);
     }
 
     private void makeUnderline(TextView tv) {

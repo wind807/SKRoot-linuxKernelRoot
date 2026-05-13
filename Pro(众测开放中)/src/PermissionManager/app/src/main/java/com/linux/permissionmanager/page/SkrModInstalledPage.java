@@ -68,27 +68,10 @@ public class SkrModInstalledPage {
 
     public void refreshPage() { setupSkrModRecyclerView(); }
 
-    private Set<String> queryModuleUuidSet(boolean runningOnly, boolean abnormalOnly) {
-        String json = NativeBridge.getSkrootModuleList(mRootKey, runningOnly, abnormalOnly);
-        List<SkrModInstalledItem> list = parseSkrModList(json);
-        if (list == null || list.isEmpty()) return Collections.emptySet();
-        return list.stream().map(SkrModInstalledItem::getUuid).filter(Objects::nonNull).collect(Collectors.toSet());
-    }
-
     private void setupSkrModRecyclerView() {
-        String jsonAll = NativeBridge.getSkrootModuleList(mRootKey, false, false);
+        String jsonAll = NativeBridge.getSkrootModuleList(mRootKey);
         List<SkrModInstalledItem> listAll = parseSkrModList(jsonAll);
 
-        if (listAll != null && !listAll.isEmpty()) {
-            Set<String> runningUuids = queryModuleUuidSet(true, false);
-            Set<String> abnormalUuids = queryModuleUuidSet(false, true);
-            for (SkrModInstalledItem it : listAll) {
-                String uuid = it.getUuid();
-                if (uuid == null) continue;
-                if (abnormalUuids.contains(uuid)) it.setRunState(SkrModRunState.ABNORMAL);
-                else if (runningUuids.contains(uuid)) it.setRunState(SkrModRunState.RUNNING);
-            }
-        }
         mAdapter = new SkrModInstalledAdapter(listAll, new SkrModInstalledAdapter.OnItemClickListener() {
             @Override
             public void onOpenWebUIBtnClick(View v, SkrModInstalledItem skrmod) { onOpenSkrModWebUI(skrmod); }
@@ -106,21 +89,50 @@ public class SkrModInstalledPage {
         checkAllModulesUpdate(listAll);
     }
 
+    private SkrModRunState parseRunState(String state) {
+        if (state == null) return SkrModRunState.NOT_RUNNING;
+        switch (state) {
+            case "NotRunning":
+                return SkrModRunState.NOT_RUNNING;
+            case "Running":
+                return SkrModRunState.RUNNING;
+            case "Abnormal":
+                return SkrModRunState.ABNORMAL;
+            case "RemovedPendingReboot":
+                return SkrModRunState.REMOVED_PENDING_REBOOT;
+            default:
+                return SkrModRunState.NOT_RUNNING;
+        }
+    }
+    
     private List<SkrModInstalledItem> parseSkrModList(String jsonStr) {
         List<SkrModInstalledItem> list = new ArrayList<>();
         try {
             JSONArray jsonArray = new JSONArray(jsonStr);
             for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                String name = URLDecoder.decode(jsonObject.getString("name"), "UTF-8");
-                String ver = URLDecoder.decode(jsonObject.getString("ver"), "UTF-8");
-                String desc = URLDecoder.decode(jsonObject.getString("desc"), "UTF-8");
-                String author = URLDecoder.decode(jsonObject.getString("author"), "UTF-8");
-                String uuid = URLDecoder.decode(jsonObject.getString("uuid"), "UTF-8");
-                String update_json = URLDecoder.decode(jsonObject.getString("update_json"), "UTF-8");
-                boolean web_ui = jsonObject.getBoolean("web_ui");
-                String min_sdk_ver = URLDecoder.decode(jsonObject.getString("min_sdk_ver"), "UTF-8");
-                SkrModInstalledItem e = new SkrModInstalledItem(name, desc, ver, uuid, author, update_json, min_sdk_ver, web_ui, null);
+                JSONObject itemObj = jsonArray.getJSONObject(i);
+                JSONObject descObj = itemObj.getJSONObject("desc");
+                String name = URLDecoder.decode(descObj.optString("name", ""));
+                String ver = URLDecoder.decode(descObj.optString("ver", ""));
+                String desc = URLDecoder.decode(descObj.optString("desc", ""));
+                String author = URLDecoder.decode(descObj.optString("author", ""));
+                String uuid = URLDecoder.decode(descObj.optString("uuid", ""));
+                String updateJson = URLDecoder.decode(descObj.optString("update_json", ""));
+                boolean webUi = descObj.optBoolean("web_ui", false);
+                String minSdkVer = URLDecoder.decode(descObj.optString("min_sdk_ver", ""));
+                String stateStr = itemObj.optString("state", "");
+                SkrModRunState runState = parseRunState(stateStr);
+                SkrModInstalledItem e = new SkrModInstalledItem(
+                        name,
+                        desc,
+                        ver,
+                        uuid,
+                        author,
+                        updateJson,
+                        minSdkVer,
+                        webUi,
+                        runState
+                );
                 list.add(e);
             }
         } catch (Exception e) {
@@ -211,6 +223,12 @@ public class SkrModInstalledPage {
 
     private void checkAllModulesUpdate(List<SkrModInstalledItem> listAll) {
         if (listAll == null || listAll.isEmpty()) return;
+        mUpdateManager.getAllModulesUpdateCache(
+                listAll,
+                (mod, info) -> {
+                    if (info != null && mAdapter != null) mAdapter.updateModuleUpdateInfo(mod.getUuid(), info);
+                }
+        );
         mUpdateManager.checkAllModulesUpdate(
                 listAll,
                 (mod, info) -> {

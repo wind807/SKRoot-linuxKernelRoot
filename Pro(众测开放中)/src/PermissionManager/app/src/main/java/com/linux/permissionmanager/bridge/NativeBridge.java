@@ -20,12 +20,14 @@ public final class NativeBridge {
 
     public static native String installSkrootModule(String rootKey, String zipFilePath);
     public static native String uninstallSkrootModule(String rootKey, String modUuid);
-    public static native String getSkrootModuleList(String rootKey, boolean runningOnly, boolean abnormalOnly);
+    public static native String getSkrootModuleList(String rootKey);
     public static native String parseSkrootModuleDesc(String rootKey, String zipFilePath);
     public static native String openSkrootModuleWebUI(String rootKey, String modUuid);
 
     public static native String setBootFailProtectEnabled(String rootKey, boolean enable);
     public static native boolean isBootFailProtectEnabled(String rootKey);
+    public static native String setAdbForcedDisabled(String rootKey, boolean enable);
+    public static native boolean isAdbForcedDisabled(String rootKey);
     public static native String testSkrootBasics(String rootKey, String item);
     public static native String testSkrootDefaultModule(String rootKey, String name);
     public static native String restartZygote64(String rootKey);

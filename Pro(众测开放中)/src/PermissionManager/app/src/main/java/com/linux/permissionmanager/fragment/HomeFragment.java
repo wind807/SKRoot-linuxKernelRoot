@@ -189,7 +189,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
     }
 
     private void onClickUninstallSkrootEnvBtn() {
-        DialogUtils.showCustomDialog(mActivity,"确认","确定要卸载SKRoot环境吗？这会同时清空 SU 授权列表和删除已安装的模块",null,
+        DialogUtils.showCustomDialog(mActivity,"确认","确定要卸载SKRoot环境吗？这会同时清空 su 授权列表和删除已安装的模块",null,
                 "确定", (dialog, which) -> {
                     dialog.dismiss();
                     appendConsoleMsg(NativeBridge.uninstallSkrootEnv(mRootKey));

@@ -35,13 +35,24 @@
                     android:text="故障检查：" />
 
 
-                <CheckBox
-                    android:id="@+id/enable_boot_fail_protect_ckbox"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="启用开机失败保护"
-                    android:textSize="14sp" />
+                    android:orientation="horizontal">
+                    <CheckBox
+                        android:id="@+id/enable_boot_fail_protect_ckbox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="启用开机失败保护"
+                        android:textSize="14sp" />
 
+                    <CheckBox
+                        android:id="@+id/adb_forced_disabled_ckbox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="强制关闭ADB"
+                        android:textSize="14sp" />
+                </LinearLayout>
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -164,7 +175,7 @@
                         android:id="@+id/reboot_btn"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="软重启"
+                        android:text="重启选项"
                         app:cornerRadius="8dp"
                         android:paddingLeft="20dp"
                         android:paddingRight="20dp"

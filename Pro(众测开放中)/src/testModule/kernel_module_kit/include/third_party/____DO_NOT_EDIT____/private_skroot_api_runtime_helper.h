@@ -21,17 +21,17 @@ inline KModErr read_skroot_log(const char* root_key, std::string& out) {
     return err;
 }
 
-inline KModErr get_all_modules_list(const char* root_key, std::vector<module_desc>& out_list, ModuleListMode mode) {
-    thread_local std::vector<module_desc>* tls_out = nullptr;
-    auto cb = [](const module_desc* desc) {
-        if (!tls_out || !desc) return;
-        module_desc d;
-        std::memcpy(&d, desc, sizeof(d));
-        tls_out->push_back(std::move(d));
+inline KModErr get_all_modules_list(const char* root_key, std::vector<module_record>& out_list) {
+    thread_local std::vector<module_record>* tls_out = nullptr;
+    auto cb = [](const module_record* record) {
+        if (!tls_out || !record) return;
+        module_record r;
+        std::memcpy(&r, record, sizeof(r));
+        tls_out->push_back(std::move(r));
     };
     tls_out = &out_list;
-    KModErr get_all_modules_with_cb(const char* root_key, void (*cb)(const module_desc* desc), ModuleListMode mode);
-    KModErr err = get_all_modules_with_cb(root_key, cb, mode);
+    KModErr get_all_modules_with_cb(const char* root_key, void (*cb)(const module_record* record));
+    KModErr err = get_all_modules_with_cb(root_key, cb);
     tls_out = nullptr; 
     return err;
 }

@@ -62,6 +62,25 @@ static cJSON * moduleDescToJsonObj(module_desc & desc) {
     return item;
 }
 
+static std::string moduleRunStateToString(ModuleRunState state) {
+    static const std::map<ModuleRunState, const char*> kStateNameMap = {
+            {ModuleRunState::NotRunning,              "NotRunning"},
+            {ModuleRunState::Running,              "Running"},
+            {ModuleRunState::Abnormal,             "Abnormal"},
+            {ModuleRunState::RemovedPendingReboot, "RemovedPendingReboot"},
+    };
+    auto it = kStateNameMap.find(state);
+    if (it != kStateNameMap.end()) return it->second;
+    return "";
+}
+
+static cJSON * moduleRecordToJsonObj(module_record & record) {
+    cJSON *item = cJSON_CreateObject();
+    cJSON_AddItemToObject(item, "desc", moduleDescToJsonObj(record.desc));
+    cJSON_AddStringToObject(item, "state", moduleRunStateToString(record.state).c_str());
+    return item;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_linux_permissionmanager_bridge_NativeBridge_installSkrootEnv(
         JNIEnv* env, jclass /* this */, jstring rootKey, jboolean isHotload) {
@@ -267,16 +286,12 @@ Java_com_linux_permissionmanager_bridge_NativeBridge_uninstallSkrootModule(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_linux_permissionmanager_bridge_NativeBridge_getSkrootModuleList(
-        JNIEnv* env, jclass /* this */, jstring rootKey, jboolean runningOnly, jboolean abnormalOnly) {
+Java_com_linux_permissionmanager_bridge_NativeBridge_getSkrootModuleList(JNIEnv* env, jclass /* this */, jstring rootKey) {
     string strRootKey = jstringToStr(env, rootKey);
 
     stringstream ss;
-    vector<module_desc> list;
-    KModErr err = get_all_modules_list(strRootKey.c_str(), list,
-                                                   runningOnly ? ModuleListMode::RunningOnly :
-                                                   abnormalOnly ? ModuleListMode::AbnormalOnly :
-                                                   ModuleListMode::All);
+    vector<module_record> list;
+    KModErr err = get_all_modules_list(strRootKey.c_str(), list);
     if(is_failed(err)) {
         ss << "get_all_modules_list: " << to_string(err).c_str();
         return env->NewStringUTF(ss.str().c_str());
@@ -284,7 +299,7 @@ Java_com_linux_permissionmanager_bridge_NativeBridge_getSkrootModuleList(
 
     cJSON *root = cJSON_CreateArray();
     for (auto & iter : list) {
-        cJSON *item = moduleDescToJsonObj(iter);
+        cJSON *item = moduleRecordToJsonObj(iter);
         cJSON_AddItemToArray(root, item);
     }
     ss << cJSON_Print(root);
@@ -353,6 +368,29 @@ Java_com_linux_permissionmanager_bridge_NativeBridge_isBootFailProtectEnabled(
         jstring rootKey) {
     string strRootKey = jstringToStr(env, rootKey);
     return is_boot_fail_protect_enabled(strRootKey.c_str()) ? JNI_TRUE : JNI_FALSE;
+}
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_linux_permissionmanager_bridge_NativeBridge_setAdbForcedDisabled(
+        JNIEnv* env,
+        jclass /* this */,
+        jstring rootKey,
+        jboolean enable) {
+    string strRootKey = jstringToStr(env, rootKey);
+
+    KModErr err = set_adb_forced_disabled(strRootKey.c_str(), enable);
+
+    stringstream sstr;
+    sstr << "set_adb_forced_disabled: " << to_string(err).c_str();
+    return env->NewStringUTF(sstr.str().c_str());
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_linux_permissionmanager_bridge_NativeBridge_isAdbForcedDisabled(
+        JNIEnv* env,
+        jclass /* this */,
+        jstring rootKey) {
+    string strRootKey = jstringToStr(env, rootKey);
+    return is_adb_forced_disabled(strRootKey.c_str()) ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jstring JNICALL

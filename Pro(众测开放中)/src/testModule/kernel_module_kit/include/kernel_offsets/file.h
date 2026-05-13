@@ -63,4 +63,11 @@ KModErr get_file_f_cred_offset(uint32_t & offset);
 * 返回: OK 表示成功；其它值为错误码
 ***************************************************************************/
 KModErr get_file_private_data_offset(uint32_t & offset);
+
+/***************************************************************************
+* 获取 file 结构体中 struct address_space *f_mapping; 字段的偏移量
+* 参数: offset      输出参数，返回 f_mapping 字段相对于 file 起始的偏移量（字节）
+* 返回: OK 表示成功；其它值为错误码
+***************************************************************************/
+KModErr get_file_f_mapping_offset(uint32_t & offset);
 }

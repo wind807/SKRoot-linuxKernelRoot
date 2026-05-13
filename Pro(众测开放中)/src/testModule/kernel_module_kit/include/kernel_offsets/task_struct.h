@@ -10,6 +10,13 @@
 
 namespace kernel_module {
 /***************************************************************************
+ * 获取 task_struct 结构体中 unsigned int __state; 字段的偏移量
+ * 参数: offset     输出参数，返回 __state 字段相对于 task_struct 起始的偏移量（字节）
+ * 返回: OK        表示调用成功；其他值为错误码
+ ***************************************************************************/
+KModErr get_task_struct_state_offset(uint32_t & offset);
+
+/***************************************************************************
  * 获取 task_struct 结构体中 void *stack 字段的偏移量
  * 参数: offset     输出参数，返回 stack 字段相对于 task_struct 起始的偏移量（字节）
  * 返回: OK        表示调用成功；其他值为错误码
@@ -24,6 +31,13 @@ KModErr get_task_struct_stack_offset(uint32_t & offset);
 KModErr get_task_struct_stack_size(uint32_t &size);
 
 /***************************************************************************
+ * 获取 task_struct 结构体中 unsigned int ptrace; 字段的偏移量
+ * 参数: offset     输出参数，返回 ptrace 字段相对于 task_struct 起始的偏移量（字节）
+ * 返回: OK        表示调用成功；其他值为错误码
+ ***************************************************************************/
+KModErr get_task_struct_ptrace_offset(uint32_t & offset);
+
+/***************************************************************************
  * 获取 task_struct 结构体中 struct mm_struct *mm 字段的偏移量
  * 参数: offset     输出参数，返回 mm 字段相对于 task_struct 起始的偏移量（字节）
  * 返回: OK        表示调用成功；其他值为错误码
@@ -36,6 +50,13 @@ KModErr get_task_struct_mm_offset(uint32_t & offset);
  * 返回: OK 表示成功；其它值为错误码
  ***************************************************************************/
 KModErr get_task_struct_pid_offset(uint32_t & offset);
+
+/***************************************************************************
+ * 获取 task_struct 结构体中 tgid 字段的偏移量
+ * 参数: offset     输出参数，返回 tgid 字段相对于 task_struct 起始的偏移量（字节）
+ * 返回: OK 表示成功；其它值为错误码
+ ***************************************************************************/
+KModErr get_task_struct_tgid_offset(uint32_t & offset);
 
 /***************************************************************************
  * 获取 task_struct 结构体中 real_parent 字段的偏移量

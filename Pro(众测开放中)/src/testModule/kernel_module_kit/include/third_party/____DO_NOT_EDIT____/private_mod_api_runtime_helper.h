@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../../module_err_def.h"
+#include "../../module_base_kernel_func_hook.h"
 namespace kernel_module {
 inline KModErr execute_kernel_asm_func(const std::vector<uint8_t>& func_bytes, uint64_t& output_result) {
     KModErr execute_kernel_asm_func_with_buf(const uint8_t*shellcode, uint32_t size, uint64_t& out_kaddr);
@@ -39,14 +40,22 @@ inline KModErr read_blob_disk_storage(const char* key, std::vector<uint8_t>& out
 }
 
 // 详情请跳转：module_base_kernel_func_hook.h
-inline KModErr install_kernel_function_before_hook(uint64_t kaddr, const std::vector<uint8_t>& hook_handler_code) {
-    KModErr install_kfunc_before_hook_with_buf(uint64_t hook_kaddr, const void *shellcode, uint32_t shellcode_len);
-    return install_kfunc_before_hook_with_buf(kaddr, hook_handler_code.data(), hook_handler_code.size());
+inline KModErr install_kernel_function_before_hook(uint64_t kaddr, const std::vector<uint8_t>& handler_shellcode, HookHandle* out_hook_handle) {
+    KModErr install_kfunc_before_hook_with_buf(uint64_t hook_kaddr, const void *shellcode, uint32_t shellcode_len, HookHandle* out_hook_handle);
+    return install_kfunc_before_hook_with_buf(kaddr, handler_shellcode.data(), handler_shellcode.size(), out_hook_handle);
 }
 
 // 详情请跳转：module_base_kernel_func_hook.h
-inline KModErr install_kernel_function_after_hook(uint64_t target_func_kaddr, const std::vector<uint8_t>& hook_handler_code) {
-    KModErr install_kfunc_after_hook_with_buf(uint64_t hook_kaddr, const void *shellcode, uint32_t shellcode_len);
-    return install_kfunc_after_hook_with_buf(target_func_kaddr, hook_handler_code.data(), hook_handler_code.size());
+inline KModErr install_kernel_function_after_hook(uint64_t target_func_kaddr, const std::vector<uint8_t>& handler_shellcode, HookHandle* out_hook_handle) {
+    KModErr install_kfunc_after_hook_with_buf(uint64_t hook_kaddr, const void *shellcode, uint32_t shellcode_len, HookHandle* out_hook_handle);
+    return install_kfunc_after_hook_with_buf(target_func_kaddr, handler_shellcode.data(), handler_shellcode.size(), out_hook_handle);
 }
 }
+void set_symbol_lookup_printf_d8685f89f10ca8eb96df766c8babd6c3(bool enable);
+
+class SymbolLookupPrintfGuard_8dfccc5cf454087c7314725d3487e703 final {
+public:
+    SymbolLookupPrintfGuard_8dfccc5cf454087c7314725d3487e703() noexcept { set_symbol_lookup_printf_d8685f89f10ca8eb96df766c8babd6c3(false); }
+    ~SymbolLookupPrintfGuard_8dfccc5cf454087c7314725d3487e703() noexcept { set_symbol_lookup_printf_d8685f89f10ca8eb96df766c8babd6c3(true); }
+    DISABLE_COPY_MOVE(SymbolLookupPrintfGuard_8dfccc5cf454087c7314725d3487e703);
+};

@@ -19,10 +19,7 @@ struct scoped_kpath {
     scoped_kpath() = default;
     ~scoped_kpath() { reset(); }
 
-    scoped_kpath(const scoped_kpath&) = delete;
-    scoped_kpath& operator=(const scoped_kpath&) = delete;
-    scoped_kpath(scoped_kpath&&) = delete;
-    scoped_kpath& operator=(scoped_kpath&&) = delete;
+    DISABLE_COPY_MOVE(scoped_kpath);
 
     void init(uint64_t buf_kaddr, const kpath& p) {
         reset();

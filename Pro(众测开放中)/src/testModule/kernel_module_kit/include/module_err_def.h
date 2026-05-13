@@ -19,6 +19,7 @@ X(ERR_MODULE_MUST_UNINSTALL,) \
 X(ERR_MODULE_ASM,) \
 X(ERR_MODULE_FUNC_NOT_STANDARD,) \
 X(ERR_MODULE_ADDR_NOT_ALGIN4,) \
+X(ERR_MODULE_NOT_KADDR,) \
 X(ERR_MODULE_START_ADDR,) \
 X(ERR_MODULE_GET_CPU,) \
 X(ERR_MODULE_SET_CPU,) \
@@ -30,6 +31,7 @@ X(ERR_MODULE_SYMBOL_NOT_EXIST,) \
 X(ERR_MODULE_SYMBOL_NOT_MATCH_LINUX_VER,) \
 X(ERR_MODULE_PR_GET_NAME,) \
 X(ERR_MODULE_PR_SET_NAME,) \
+X(ERR_MODULE_PTRACE_ATTACH,) \
 X(ERR_MODULE_GET_AUXV_SIGNATURE,) \
 X(ERR_MODULE_HOOK_FUNC_NOT_STANDARD,) \
 X(ERR_MODULE_HOOK_INSN_NOT_SUPPORT,) \
@@ -38,6 +40,7 @@ X(ERR_MODULE_IDLE_MEM_NOT_FOUND,) \
 X(ERR_MODULE_IDLE_MEM_NOT_ENOUGH,) \
 X(ERR_MODULE_IDLE_MEM_UNKNOW,) \
 X(ERR_MODULE_IDLE_MEM_REMAP,) \
+X(ERR_MODULE_HOOK_DISABLE_FLAG_NOT_ENOUGH,) \
 X(ERR_MODULE_STORAGE_NOT_FOUND,) \
 X(ERR_MODULE_STORAGE_WRITE,) \
 X(ERR_MODULE_STORAGE_READ,) \
@@ -155,3 +158,9 @@ inline std::string to_string(KModErr e) {
     if (auto sv = kmoderr_name_sv(e); !sv.empty()) return std::string(sv);
     return "Unknown(" + std::to_string(static_cast<ssize_t>(e)) + ")";
 }
+
+#define DISABLE_COPY_MOVE(ClassName)              \
+    ClassName(const ClassName&) = delete;         \
+    ClassName& operator=(const ClassName&) = delete; \
+    ClassName(ClassName&&) = delete;              \
+    ClassName& operator=(ClassName&&) = delete

@@ -18,6 +18,21 @@ KModErr set_boot_fail_protect_enabled(const char* root_key, bool enabled);
 bool is_boot_fail_protect_enabled(const char* root_key);
 
 /***************************************************************************
+ * 设置 ADB 是否强制关闭
+ * 参数: root_key     ROOT 权限密钥文本
+ *       disabled    true 表示强制关闭；false 表示取消强制关闭
+ * 返回: OK 表示设置成功；其他值为错误码
+ ***************************************************************************/
+KModErr set_adb_forced_disabled(const char* root_key, bool disabled);
+
+/***************************************************************************
+ * 查询 ADB 是否处于强制关闭状态
+ * 参数: root_key     ROOT 权限密钥文本
+ * 返回: true 表示是；false 表示否
+ ***************************************************************************/
+bool is_adb_forced_disabled(const char* root_key);
+
+/***************************************************************************
  * 获取当前 ROOT 测试报告
  * 参数: root_key   ROOT 权限密钥文本
  * 返回: ROOT 状态报告字符串
