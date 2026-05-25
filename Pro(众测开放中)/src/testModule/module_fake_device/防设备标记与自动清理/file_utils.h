@@ -49,7 +49,7 @@ static bool read_text_file(const char* target_path, std::string& text) {
     return true;
 }
 
-static inline std::string read_text_file_trim(const fs::path& p) {
+static inline std::string read_text_file_trim(const std::filesystem::path& p) {
     std::ifstream in(p, std::ios::binary);
     if (!in.is_open()) return {};
 
@@ -92,31 +92,15 @@ static bool delete_path(const std::filesystem::path& dir_path) {
     return !file_exists(dir_path);
 }
 
-static size_t count_subdirectories(const std::filesystem::path& dir_path) {
-    std::error_code ec;
-    if (!std::filesystem::exists(dir_path, ec) || !std::filesystem::is_directory(dir_path, ec)) {
-        return 0;
-    }
-    size_t count = 0;
-    std::filesystem::directory_options opts =
-        std::filesystem::directory_options::skip_permission_denied;
-
-    for (std::filesystem::directory_iterator it(dir_path, opts, ec), end; !ec && it != end; ++it) {
-        std::error_code ec2;
-        if (it->is_directory(ec2) && !it->is_symlink(ec2)) ++count;
-    }
-    return count;
-}
-
 static void clear_directory_contents(const std::string& path) {
     std::error_code ec;
     // 检查路径是否存在且为目录
-    if (fs::exists(path, ec) && fs::is_directory(path, ec)) {
+    if (std::filesystem::exists(path, ec) && std::filesystem::is_directory(path, ec)) {
         // 遍历目录内的所有子项目
-        for (const auto& entry : fs::directory_iterator(path, ec)) {
+        for (const auto& entry : std::filesystem::directory_iterator(path, ec)) {
             std::error_code temp_ec;
             // 对内部的每个子项执行 remove_all
-            fs::remove_all(entry.path(), temp_ec);
+            std::filesystem::remove_all(entry.path(), temp_ec);
             if (temp_ec) {
                 printf("clear failed at %s : %s\n", entry.path().c_str(), temp_ec.message().c_str());
             }

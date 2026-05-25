@@ -39,6 +39,11 @@ inline KModErr read_blob_disk_storage(const char* key, std::vector<uint8_t>& out
     return err;
 }
 
+inline void set_current_module_description(const std::string& new_description) {
+    void set_current_module_description_with_str(const char* new_description);
+    set_current_module_description_with_str(new_description.c_str());
+}
+
 // 详情请跳转：module_base_kernel_func_hook.h
 inline KModErr install_kernel_function_before_hook(uint64_t kaddr, const std::vector<uint8_t>& handler_shellcode, HookHandle* out_hook_handle) {
     KModErr install_kfunc_before_hook_with_buf(uint64_t hook_kaddr, const void *shellcode, uint32_t shellcode_len, HookHandle* out_hook_handle);

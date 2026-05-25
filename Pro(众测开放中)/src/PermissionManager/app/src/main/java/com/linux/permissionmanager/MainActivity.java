@@ -75,29 +75,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void showModeSelectDlg(boolean currentIsHotload, @NonNull Runnable onSelectBoot, @NonNull Runnable onSelectHotload) {
         final String[] items = {"1.刷 Boot 模式", "2.热启动模式"};
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("请选择模式");
-        builder.setSingleChoiceItems(items, -1, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-                if(which == 0) {
-                    if (!currentIsHotload) return;
-                    AppSettings.setBoolean(KEY_IS_HOTLOAD_MODE, false);
-                    onSelectBoot.run();
-                } else if(which == 1) {
-                    if (currentIsHotload) return;
-                    AppSettings.setBoolean(KEY_IS_HOTLOAD_MODE, true);
-                    onSelectHotload.run();
+        DialogUtils.showSingleChoiceDialog(this, "请选择模式", items, -1,
+                (dialog, which) -> {
+                    if(which == 0) {
+                        if (!currentIsHotload) return;
+                        AppSettings.setBoolean(KEY_IS_HOTLOAD_MODE, false);
+                        onSelectBoot.run();
+                    } else if(which == 1) {
+                        if (currentIsHotload) return;
+                        AppSettings.setBoolean(KEY_IS_HOTLOAD_MODE, true);
+                        onSelectHotload.run();
+                    }
                 }
-            }
-        });
-        builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) { dialog.dismiss(); }
-        });
-        AlertDialog dialog = builder.create();
-        dialog.show();
+        );
     }
 
     private static class ModeRowHolder {

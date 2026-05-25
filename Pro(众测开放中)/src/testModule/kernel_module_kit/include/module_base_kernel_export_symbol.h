@@ -64,6 +64,10 @@ void printk(Assembler* a, KModErr& out_err, const char *fmt, Regs... regs) {
 // 原型: unsigned long kallsyms_lookup_name(const char *name); 返回值为 X0 寄存器
 void kallsyms_lookup_name(Assembler* a, KModErr& out_err, GpX name);
 
+// 原型: int kallsyms_lookup_size_offset(unsigned long addr, unsigned long *symbolsize, unsigned long *offset) 返回值为 W0 寄存器
+void kallsyms_lookup_size_offset(Assembler* a, KModErr& out_err, GpX addr, GpX symbolsize, GpX offset);
+void kallsyms_lookup_size_offset(Assembler* a, KModErr& out_err, uint64_t addr, GpX symbolsize, GpX offset);
+
 // 原型：int fn(void *data, const char *name, struct module *mod, unsigned long addr)，设置末尾 X0 返回值非0代表终止遍历。
 typedef void (*SymbolCb)(
     Assembler* a, // Assembler 对象，用于生成 ARM64 指令

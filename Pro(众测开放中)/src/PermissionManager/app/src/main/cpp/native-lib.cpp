@@ -431,7 +431,7 @@ Java_com_linux_permissionmanager_bridge_NativeBridge_testSkrootDefaultModule(
     if(strName == "RootBridgePrint") defName = DeafultModuleName::RootBridgePrint;
     else if(strName == "RootBridgeExec") defName = DeafultModuleName::RootBridgeExec;
     else if(strName == "SuRedirectPrint") defName = DeafultModuleName::SuRedirectPrint;
-    else if(strName == "SuRedirectExec") defName = DeafultModuleName::SuRedirectExec;
+    else if(strName == "TombstonesPurgePrint") defName = DeafultModuleName::TombstonesPurgePrint;
     else return env->NewStringUTF(strName.c_str());
 
     stringstream sstr;

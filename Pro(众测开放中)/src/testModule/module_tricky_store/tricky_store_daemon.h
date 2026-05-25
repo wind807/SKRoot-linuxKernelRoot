@@ -14,10 +14,6 @@ static void redirect_stdio_to_devnull(void) {
 }
 
 static void start_tricky_store_daemon_loop(const char* moddir) {
-    if (setsid() < 0) {
-        setpgid(0, 0);
-    }
-    signal(SIGPIPE, SIG_IGN);
     redirect_stdio_to_devnull();
     if (chdir(moddir) != 0) _exit(1);
     for (;;) {

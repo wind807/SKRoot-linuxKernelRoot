@@ -1,6 +1,9 @@
 package com.linux.permissionmanager.fragment;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Paint;
 import android.os.Bundle;
@@ -12,6 +15,7 @@ import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -105,7 +109,7 @@ public class SettingsFragment extends Fragment {
         );
         mBtnTestSkrootBasics.setOnClickListener((v) -> showSelectTestSkrootBasicsDlg());
         mBtnTestSkrootDefaultModule.setOnClickListener((v) -> showSelectTestDefaultModuleDlg());
-        mBtnReboot.setOnClickListener(this::showRebootPopupMenu);
+        mBtnReboot.setOnClickListener((v) -> showRebootSelectDlg());
 
         mCkboxEnableSkrootLog.setOnCheckedChangeListener(null);
         mCkboxEnableSkrootLog.setChecked(NativeBridge.isSkrootLogEnabled(mRootKey));
@@ -137,7 +141,7 @@ public class SettingsFragment extends Fragment {
                 else if(which == 3) item = "ReadTrampoline";
                 else if(which == 4) item = "WriteTrampoline";
                 String log = NativeBridge.testSkrootBasics(mRootKey, item);
-                if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\\n请先卸载 SKRoot 环境，再重试。";
+                if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\n请先卸载 SKRoot 环境，再重试。";
                 DialogUtils.showLogDialog(mActivity, log, true);
             }
         });
@@ -150,69 +154,65 @@ public class SettingsFragment extends Fragment {
     }
 
     private void showSelectTestDefaultModuleDlg() {
-        final String[] items = {"1.Root 权限模块 (打印)", "2.Root 权限模块 (执行)", "3.su 重定向模块 (打印)", "4.su 重定向模块 (执行)"};
-        AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
-        builder.setTitle("选择一个选项");
-        builder.setSingleChoiceItems(items, -1, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-                String defName = "";
-                if(which == 0) defName = "RootBridgePrint";
-                else if(which == 1) defName = "RootBridgeExec";
-                else if(which == 2) defName = "SuRedirectPrint";
-                else if(which == 3) defName = "SuRedirectExec";
-                String log = NativeBridge.testSkrootDefaultModule(mRootKey, defName);
-                if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\\n请先卸载 SKRoot 环境，再重试。";
-                DialogUtils.showLogDialog(mActivity, log, true);
-            }
-        });
-        builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) { dialog.dismiss(); }
-        });
-        AlertDialog dialog = builder.create();
-        dialog.show();
+        final String[] items = {"1.Root 权限模块 (打印)", "2.Root 权限模块 (执行)", "3.su 重定向模块 (打印)", "4.su 重定向模块 (执行)", "5.系统目录净化模块 (打印)"};
+        DialogUtils.showSingleChoiceDialog(mActivity, null, items, -1,
+                (dialog, which) -> {
+                    String defName = "";
+                    if(which == 0) defName = "RootBridgePrint";
+                    else if(which == 1) defName = "RootBridgeExec";
+                    else if(which == 2) defName = "SuRedirectPrint";
+                    else if(which == 3) defName = "SuRedirectExec";
+                    else if(which == 4) defName = "TombstonesPurgePrint";
+                    String log = NativeBridge.testSkrootDefaultModule(mRootKey, defName);
+                    if(log.contains("ERR_MODULE_MUST_UNINSTALL")) log += "\n请先卸载 SKRoot 环境，再重试。";
+                    DialogUtils.showLogDialog(mActivity, log, true);
+                }
+        );
+
+
     }
 
     private enum RebootAction {
-        NORMAL(R.id.reboot_normal, "普通重启", "setprop sys.powerctl reboot", false),
-        SOFT(R.id.reboot_soft, "软重启", null, true),
-        RECOVERY(R.id.reboot_recovery, "重启到 Recovery", "setprop sys.powerctl reboot,recovery", false),
-        BOOTLOADER(R.id.reboot_bootloader, "重启到 Fastboot", "setprop sys.powerctl reboot,bootloader", false),
-        FASTBOOTD(R.id.reboot_fastbootd, "重启到 FastbootD", "setprop sys.powerctl reboot,fastboot", false);
-        final int menuId;
+        NORMAL("普通重启", "setprop sys.powerctl reboot", false),
+        SOFT("软重启", null, true),
+        RECOVERY("重启到 Recovery", "setprop sys.powerctl reboot,recovery", false),
+        BOOTLOADER("重启到 Fastboot", "setprop sys.powerctl reboot,bootloader", false),
+        FASTBOOTD("重启到 FastbootD", "setprop sys.powerctl reboot,fastboot", false);
         final String title;
         final String cmd;
         final boolean softReboot;
-        RebootAction(int menuId, String title, String cmd, boolean softReboot) {
-            this.menuId = menuId;
+        RebootAction(String title, String cmd, boolean softReboot) {
             this.title = title;
             this.cmd = cmd;
             this.softReboot = softReboot;
         }
-        static RebootAction fromMenuId(int menuId) {
-            for (RebootAction action : values()) {
-                if (action.menuId == menuId) return action;
-            }
-            return null;
+        static RebootAction fromId(int id) {
+            RebootAction[] actions = values();
+            if (id < 0 || id >= actions.length) return null;
+            return actions[id];
         }
     }
 
-    private void showRebootPopupMenu(View anchor) {
-        PopupMenu popupMenu = new PopupMenu(mActivity, anchor);
-        popupMenu.getMenuInflater().inflate(R.menu.popup_reboot_item_menu, popupMenu.getMenu());
-        popupMenu.setOnMenuItemClickListener(item -> {
-            RebootAction action = RebootAction.fromMenuId(item.getItemId());
-            if (action == null) return false;
-            showConfirmRebootDialog(action);
-            return true;
-        });
-        popupMenu.show();
+    private void showRebootSelectDlg() {
+        final String[] items = {
+                "1.普通重启",
+                "2.软重启",
+                "3.重启到 Recovery",
+                "4.重启到 Fastboot",
+                "5.重启到 FastbootD",
+        };
+        DialogUtils.showSingleChoiceDialog(mActivity, null, items, -1,
+                (dialog, which) -> {
+                    RebootAction action = RebootAction.fromId(which);
+                    if (action == null) return;
+                    showConfirmRebootDialog(action);
+                }
+        );
     }
+
     private void showConfirmRebootDialog(RebootAction action) {
-        DialogUtils.showCustomDialog(mActivity,"确认", "确定要" + action.title + "吗？",null,
-                "确定", (dialog, which) -> {
+        DialogUtils.showCustomDialog(mActivity,"确认", "确定要" + action.title + "吗？",null, "确定",
+                (dialog, which) -> {
                     dialog.dismiss();
                     String tip = runRebootAction(action);
                     DialogUtils.showMsgDlg(mActivity, "执行结果", tip, null);
@@ -245,8 +245,8 @@ public class SettingsFragment extends Fragment {
     private void initLink() {
         mTvLink.setText("github.com/abcz316/SKRoot-linuxKernelRoot");
         mTvTg.setText("t.me/skrootabc");
-        mTvLink.setOnClickListener(v -> { UrlIntentUtils.openUrl(mActivity, mTvLink.getText().toString()); });
-        mTvTg.setOnClickListener(v -> { UrlIntentUtils.openUrl(mActivity, mTvTg.getText().toString()); });
+        mTvLink.setOnClickListener(v -> UrlIntentUtils.openUrl(mActivity, mTvLink.getText().toString()));
+        mTvTg.setOnClickListener(v -> UrlIntentUtils.openUrl(mActivity, mTvTg.getText().toString()));
         makeUnderline(mTvLink);
         makeUnderline(mTvTg);
     }
@@ -268,8 +268,7 @@ public class SettingsFragment extends Fragment {
 
     private void showAppUpdateDialog(AppUpdateInfo info) {
         if (info == null || !info.isHasNewVersion()) return;
-        DialogUtils.showCustomDialog(
-                mActivity, "提示", "发现新版本：" + info.getLatestVer(), null, "确定",
+        DialogUtils.showCustomDialog(mActivity, "提示", "发现新版本：" + info.getLatestVer(), null, "确定",
                 (dialog, which) -> {
                     UrlIntentUtils.openUrl(mActivity, info.getDownloadUrl());
                     dialog.dismiss();

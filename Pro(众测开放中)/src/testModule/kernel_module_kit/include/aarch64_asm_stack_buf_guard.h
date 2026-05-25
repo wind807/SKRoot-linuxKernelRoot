@@ -37,7 +37,9 @@ public:
             active_ = true;
         }
         // 立刻把“分配后的 sp”写入 out_base（外部马上拿到 buffer 地址）
-        a_->mov(out_base, asmjit::a64::sp);
+        if (!isXzr(out_base)) {
+            a_->mov(out_base, asmjit::a64::sp);
+        }
     }
 
     // move-only
@@ -68,6 +70,8 @@ public:
 
 private:
     static uint32_t align16(uint32_t n) { return (n + 15u) & ~15u; }
+    
+    static bool isXzr(GpX reg) { return reg.id() == asmjit::a64::xzr.id(); }
 
     // AArch64 add/sub immediate 通常可编码 0..4095（12-bit），这里保守拆分，避免用临时寄存器
     void emitSubSp(uint32_t bytes) {

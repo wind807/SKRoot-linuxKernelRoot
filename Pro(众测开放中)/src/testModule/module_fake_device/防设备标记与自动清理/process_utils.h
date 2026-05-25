@@ -1,7 +1,9 @@
 ﻿#pragma once
 #include <dirent.h>
 #include <sys/types.h>
+#include <sys/prctl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <algorithm>
 #include <cctype>
@@ -9,6 +11,14 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <fstream>
+
+#include "random_utils.h"
+
+#ifndef MY_TASK_COMM_LEN
+#define MY_TASK_COMM_LEN 16
+#endif
+
 namespace process_utils {
 template <class Fn>
 static pid_t fork_delayed_task(unsigned delay_sec, Fn&& fn) {
@@ -69,4 +79,17 @@ static bool is_pid_root(int pid) {
 
     return false;
 }
+
+static std::string reset_random_process_name() {
+	std::vector<uint8_t> random_name = random_utils::generate_unique_non_zero_bytes(MY_TASK_COMM_LEN - 1);
+	random_name.push_back(0);
+	if (prctl(PR_SET_NAME, random_name.data(), 0, 0, 0)) return "";
+    char verify_name[MY_TASK_COMM_LEN] = {0};
+    if (prctl(PR_GET_NAME, verify_name, 0, 0, 0)) return "";
+    if (strncmp(reinterpret_cast<const char*>(random_name.data()), verify_name, MY_TASK_COMM_LEN) != 0) {
+        return "";
+    }
+    return verify_name;
+}
+
 } // namespace process_utils

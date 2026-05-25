@@ -130,10 +130,6 @@ private:
         pid_t ppid = getpid();
         pid_t child = fork();
         if(child == 0) {
-            if (setsid() < 0) {
-                setpgid(0, 0); 
-            }
-            signal(SIGPIPE, SIG_IGN);
             wait_parent_exit(m_root_key, ppid);
             printf("[module_hide_sh_exec] kill sh!\n");
             kill(shell_pid, SIGKILL);

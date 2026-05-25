@@ -189,7 +189,7 @@ inline void printk(Assembler* a, KModErr & out_err, const char* fmt, const Arm64
 	std::vector<Arm64Arg> new_regs = __regs_vec;
 	new_regs.insert(new_regs.begin(), to_arg(xFmt));
 	CallHelper::callSymbolCandidates(a, out_err,
-        (std::vector<std::string>{ "printk", "_printk"/*Linux kernel 5.15.0*/ }),
+        (std::vector<std::string>{"_printk"/*Linux kernel 5.15.0*/ , "printk"}),
 		NeedReturnX0::No,
         new_regs
     );
@@ -197,6 +197,18 @@ inline void printk(Assembler* a, KModErr & out_err, const char* fmt, const Arm64
 
 inline void kallsyms_lookup_name(Assembler* a, KModErr & out_err, GpX name) {
     out_err = CallHelper::callNameAuto(a, "kallsyms_lookup_name", NeedReturnX0::Yes, name);
+}
+
+inline void kallsyms_lookup_size_offset(Assembler* a, KModErr& out_err, GpX addr, GpX symbolsize, GpX offset) {
+    out_err = CallHelper::callNameAuto(a, "kallsyms_lookup_size_offset", NeedReturnX0::Yes, addr, symbolsize, offset);
+}
+
+inline void kallsyms_lookup_size_offset(Assembler* a, KModErr& out_err, uint64_t addr, GpX symbolsize, GpX offset) {
+	IdleRegPool pool = IdleRegPool::make(symbolsize, offset);
+	GpX xAddr = pool.acquireX();
+	RegProtectGuard g1(a, excluding_x0(pool.getUsed()));
+	aarch64_asm_mov_x(a, xAddr, addr);
+	kallsyms_lookup_size_offset(a, out_err, xAddr, symbolsize, offset);
 }
 
 inline void kallsyms_on_each_symbol(Assembler* a, KModErr & out_err, SymbolCb fn, GpX data) {

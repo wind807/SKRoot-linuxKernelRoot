@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <dirent.h>
 #include <sys/types.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -9,7 +10,6 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
-#include <sys/prctl.h>
 #include "random_utils.h"
 
 namespace process_utils {

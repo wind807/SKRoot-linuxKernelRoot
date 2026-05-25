@@ -1,10 +1,9 @@
 ﻿#include <set>
 #include <unordered_map>
-#include <signal.h>
 
 #include "cJSON.h"
 #include "android_packages_list_utils.h"
-#include "persist_dir_perm_helper.h"
+#include "persist_dir_perm_manager.h"
 #include "boot_session_utils.h"
 #include "file_utils.h"
 #include "pkg_process_helper.h"
@@ -13,6 +12,7 @@ using namespace file_utils;
 
 std::string g_root_key;
 static volatile sig_atomic_t g_need_reload = 0;
+PersistDirPermManager g_persist_dir_perm_manager;
 
 // 把 ["aa","bb","cc"] 解析成 std::set<std::string>
 static std::set<std::string> parse_json(const std::string& json) {
@@ -124,13 +124,13 @@ static bool set_persist_dir_locked_once(bool should_lock) {
     static bool s_locked = false;
     if (should_lock) {
         if (s_locked) return true;
-        if (!persist_dir_lock()) return false;
+        if (!g_persist_dir_perm_manager.lock()) return false;
         s_locked = true;
         return true;
     }
 
     if (!s_locked) return true;
-    if (!persist_dir_unlock()) return false;
+    if (!g_persist_dir_perm_manager.unlock()) return false;
     s_locked = false;
     return true;
 }
@@ -160,7 +160,6 @@ static void monitor_pkgs_loop(const std::set<std::string>& pkgs) {
         std::this_thread::sleep_for(2s);
     }
 }
-
 
 static void daemon_loop() {
     printf("start daemon loop, pid=%ld\n", static_cast<long>(getpid()));
@@ -210,22 +209,25 @@ static void register_sigusr1() {
 // SKRoot模块入口函数
 int skroot_module_main(const char* root_key, const char* module_private_dir) {
     g_root_key = root_key;
-    if(!persist_dir_init()) {
-       printf("persist_dir_init failed\n");
-       return -1;
+    if(!g_persist_dir_perm_manager.init()) {
+        printf("persist_dir_perm_manager init failed\n");
+        return -1;
     }
-
     process_utils::fork_delayed_task(5, [=] {
-        if (setsid() < 0) {
-            setpgid(0, 0); 
-        }
-        signal(SIGPIPE, SIG_IGN);
         skroot_env::get_root(g_root_key.c_str());
         register_sigusr1();
         daemon_loop();
         while(g_need_reload) { g_need_reload = 0; daemon_loop(); }
     });
     return 0;
+}
+
+std::string module_on_install(const char* root_key, const char* module_private_dir) {
+    if (file_exists("/mnt/vendor/nvdata")) {
+        kernel_module::set_current_module_description(
+            "需手动添加目标包名。判断开启成功：/mnt/vendor/nvdata (天玑)目录下文件为空、无法写入文件，表示拦截已生效。本模块采用内核拦截技术，不改目录权限。支持天玑，天玑安装后显示新路径。");
+    }
+    return "";
 }
 
 static std::set<std::string> get_app_list() {
@@ -295,9 +297,10 @@ private:
 
 // SKRoot 模块名片
 SKROOT_MODULE_NAME("防设备标记&自动清理")
-SKROOT_MODULE_VERSION("5.0.2")
-SKROOT_MODULE_DESC("需手动添加目标包名。判断开启成功：/mnt/vendor/persist/data目录下文件为空、无法写入文件，表示拦截已生效。本模块采用内核拦截技术，不改目录权限。")
+SKROOT_MODULE_VERSION("5.0.5")
+SKROOT_MODULE_DESC("需手动添加目标包名。判断开启成功：/mnt/vendor/persist/data (高通)目录下文件为空、无法写入文件，表示拦截已生效。本模块采用内核拦截技术，不改目录权限。支持天玑，天玑安装后显示新路径。")
 SKROOT_MODULE_AUTHOR("SKRoot & 蜃 & Cycle1337")
 SKROOT_MODULE_UUID32("Vk0EFJTuG2aBLQqc6WLHVPHnhfiZ8VKG")
 SKROOT_MODULE_WEB_UI(MyWebHttpHandler)
+SKROOT_MODULE_ON_INSTALL(module_on_install)
 SKROOT_MODULE_UPDATE_JSON("https://abcz316.github.io/SKRoot-linuxKernelRoot/module_fake_device/cycle1337_bypass_device_flag_update.json")

@@ -1,5 +1,6 @@
 package com.linux.permissionmanager.utils;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -19,6 +20,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -26,7 +28,15 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 
+import com.linux.permissionmanager.R;
+import com.linux.permissionmanager.fragment.SettingsFragment;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class DialogUtils {
     public static void showCustomDialog(Context context, String title, String message,
@@ -132,18 +142,71 @@ public class DialogUtils {
         dialog.show();
     }
 
-    public static void showLogDialog(Context context, String logs, boolean scrollToBottoom) {
+    public static AlertDialog showSingleChoiceDialog(Context context, String title, String[] items, int checkedItem, DialogInterface.OnClickListener listener) {
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(title != null ? title : "请选择一个选项")
+                .setSingleChoiceItems(items, checkedItem, (d, which) -> {
+                    d.dismiss();
+                    if (listener != null) listener.onClick(d, which);
+                })
+                .setNegativeButton("取消", (d, which) -> d.dismiss())
+                .create();
+        dialog.show();
+        return dialog;
+    }
+
+    private static void saveLogsToSdcard(Activity activity, String logs) {
+        String time = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        File outFile = new File("/sdcard", "skroot_logs_" + time + ".log");
+        new Thread(() -> {
+            boolean ok = false;
+            String errMsg = null;
+            try (FileOutputStream fos = new FileOutputStream(outFile, false)) {
+                byte[] data = logs == null ? new byte[0] : logs.getBytes("UTF-8");
+                fos.write(data);
+                fos.flush();
+                ok = true;
+            } catch (Exception e) { errMsg = e.getMessage(); }
+            final boolean finalOk = ok;
+            final String finalErrMsg = errMsg;
+            activity.runOnUiThread(() -> {
+                if (finalOk) {
+                    DialogUtils.showMsgDlg(activity, "保存成功", "日志已保存到：\n" + outFile.getAbsolutePath(),null);
+                } else {
+                    DialogUtils.showMsgDlg(activity, "保存失败", "无法保存日志到：\n" + outFile.getAbsolutePath() + "\n\n错误信息："+ (finalErrMsg == null ? "unknown" : finalErrMsg), null);
+                }
+            });
+        }).start();
+    }
+
+    private static void showLogSaveSelectMenu(Activity activity, View anchor, String logs) {
+        final String[] items = {
+                "1.复制文本",
+                "2.导出到文件",
+        };
+        DialogUtils.showSingleChoiceDialog(activity, null, items, -1,
+                (dialog, which) -> {
+                    if (which == 0) {
+                        ClipboardManager cm = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+                        cm.setPrimaryClip(ClipData.newPlainText("logs", logs));
+                        Toast.makeText(activity, "日志已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                    } else if (which == 1) saveLogsToSdcard(activity, logs);
+                }
+        );
+    }
+
+    public static void showLogDialog(Activity activity, String logs, boolean scrollToBottoom) {
         // 创建全屏 Dialog
-        Dialog dialog = new Dialog(context);
+        Dialog dialog = new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         // 创建一个外部的线性布局（垂直方向）
-        LinearLayout layout = new LinearLayout(context);
+        LinearLayout layout = new LinearLayout(activity);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 50, 50, 50);
 
         // 创建 TextView 作为日志显示区域
-        TextView textView = new TextView(context);
+        TextView textView = new TextView(activity);
         textView.setTextSize(14);
         textView.setText(logs);
         textView.setTextIsSelectable(true); // 允许选中复制
@@ -153,7 +216,7 @@ public class DialogUtils {
         textView.setLineSpacing(1.5f, 1.2f); // 增加行间距，增强可读性
 
         // ScrollView 使日志可以滚动
-        ScrollView scrollView = new ScrollView(context);
+        ScrollView scrollView = new ScrollView(activity);
         scrollView.addView(textView);
         scrollView.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -168,27 +231,21 @@ public class DialogUtils {
         }
 
         // === 底部按钮区域：复制 + 关闭 ===
-        LinearLayout buttonBar = new LinearLayout(context);
+        LinearLayout buttonBar = new LinearLayout(activity);
         buttonBar.setOrientation(LinearLayout.HORIZONTAL);
         buttonBar.setGravity(Gravity.END);
 
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         btnLp.setMargins(10, 30, 10, 0); // 按钮之间稍微留点间距
 
-        // 【复制】按钮
-        Button copyButton = new Button(context);
-        copyButton.setText("复制");
+        // 【保存】按钮
+        Button copyButton = new Button(activity);
+        copyButton.setText("保存");
         copyButton.setLayoutParams(btnLp);
-        copyButton.setOnClickListener(v -> {
-            ClipboardManager cm = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-            if (cm != null) {
-                cm.setPrimaryClip(ClipData.newPlainText("logs", logs));
-                Toast.makeText(context, "日志已复制到剪贴板", Toast.LENGTH_SHORT).show();
-            }
-        });
+        copyButton.setOnClickListener(v -> showLogSaveSelectMenu(activity, copyButton, logs));
 
         // 【关闭】按钮
-        Button closeButton = new Button(context);
+        Button closeButton = new Button(activity);
         closeButton.setText("关闭");
         closeButton.setLayoutParams(btnLp);
         closeButton.setOnClickListener(v -> dialog.dismiss());

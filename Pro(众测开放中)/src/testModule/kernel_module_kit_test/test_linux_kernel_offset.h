@@ -10,6 +10,34 @@ using namespace asmjit;
 using namespace asmjit::a64;
 using namespace asmjit::a64::Predicate;
 
+KModErr Test_get_task_struct_state_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_task_struct_state_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_task_struct_stack_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_task_struct_stack_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_task_struct_stack_size() {
+    uint32_t size = 0;
+    RETURN_IF_ERROR(kernel_module::get_task_struct_stack_size(size));
+    printf("Output size: 0x%x\n", size);
+    return KModErr::OK;
+}
+
+KModErr Test_get_task_struct_ptrace_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_task_struct_ptrace_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
 KModErr Test_get_task_struct_pid_offset() {
     uint32_t offset = 0;
     RETURN_IF_ERROR(kernel_module::get_task_struct_pid_offset(offset));
@@ -45,20 +73,6 @@ KModErr Test_get_task_struct_mm_offset() {
     return KModErr::OK;
 }
 
-KModErr Test_get_task_struct_stack_offset() {
-    uint32_t offset = 0;
-    RETURN_IF_ERROR(kernel_module::get_task_struct_stack_offset(offset));
-    printf("Output offset: 0x%x\n", offset);
-    return KModErr::OK;
-}
-
-KModErr Test_get_task_struct_stack_size() {
-    uint32_t size = 0;
-    RETURN_IF_ERROR(kernel_module::get_task_struct_stack_size(size));
-    printf("Output size: 0x%x\n", size);
-    return KModErr::OK;
-}
-
 KModErr Test_get_task_struct_files_offset() {
     uint32_t offset = 0;
     RETURN_IF_ERROR(kernel_module::get_task_struct_files_offset(offset));
@@ -87,19 +101,17 @@ KModErr Test_get_cred_cap_inheritable_offset() {
     return KModErr::OK;
 }
 
-KModErr Test_get_mm_struct_arg_offset() {
-    uint32_t arg_start_offset = 0, arg_end_offset = 0;
-    RETURN_IF_ERROR(kernel_module::get_mm_struct_arg_offset(arg_start_offset, arg_end_offset));
-    printf("Output arg_start offset: 0x%x\n", arg_start_offset);
-    printf("Output arg_end offset: 0x%x\n", arg_end_offset);
+KModErr Test_get_mm_struct_mm_mt_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_mm_struct_mm_mt_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
     return KModErr::OK;
 }
 
-KModErr Test_get_mm_struct_env_offset() {
-    uint32_t env_start_offset = 0, env_end_offset = 0;
-    RETURN_IF_ERROR(kernel_module::get_mm_struct_env_offset(env_start_offset, env_end_offset));
-    printf("Output env_start offset: 0x%x\n", env_start_offset);
-    printf("Output env_end offset: 0x%x\n", env_end_offset);
+KModErr Test_get_mm_struct_mmap_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_mm_struct_mmap_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
     return KModErr::OK;
 }
 
@@ -117,10 +129,33 @@ KModErr Test_get_mm_struct_map_count_offset() {
     return KModErr::OK;
 }
 
+KModErr Test_get_mm_struct_total_vm_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_mm_struct_total_vm_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
 KModErr Test_get_mm_struct_rss_stat_offset() {
     uint32_t offset = 0;
     RETURN_IF_ERROR(kernel_module::get_mm_struct_rss_stat_offset(offset));
     printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_mm_struct_arg_offset() {
+    uint32_t arg_start_offset = 0, arg_end_offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_mm_struct_arg_offset(arg_start_offset, arg_end_offset));
+    printf("Output arg_start offset: 0x%x\n", arg_start_offset);
+    printf("Output arg_end offset: 0x%x\n", arg_end_offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_mm_struct_env_offset() {
+    uint32_t env_start_offset = 0, env_end_offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_mm_struct_env_offset(env_start_offset, env_end_offset));
+    printf("Output env_start offset: 0x%x\n", env_start_offset);
+    printf("Output env_end offset: 0x%x\n", env_end_offset);
     return KModErr::OK;
 }
 
@@ -209,10 +244,18 @@ KModErr Test_get_file_private_data_offset() {
     return KModErr::OK;
 }
 
-KModErr Test_get_vm_area_struct_vm_offset() {
+KModErr Test_get_file_f_mapping_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_file_f_mapping_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_vm_area_struct_vm_start_offset() {
     REQUIRE_ROOT_OR_RETURN();
     uint32_t vm_start_offset = 0, vm_end_offset = 0;
-    RETURN_IF_ERROR(kernel_module::get_vm_area_struct_vm_offset(vm_start_offset, vm_end_offset));
+    RETURN_IF_ERROR(kernel_module::get_vm_area_struct_vm_start_offset(vm_start_offset, vm_end_offset));
     printf("Output vm_start_offset: 0x%x\n", vm_start_offset);
     printf("Output vm_end_offset: 0x%x\n", vm_end_offset);
     return KModErr::OK;
@@ -225,10 +268,41 @@ KModErr Test_get_vm_area_struct_vm_flags_offset() {
     return KModErr::OK;
 }
 
+KModErr Test_get_vm_area_struct_vm_mm_offset() {
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_vm_area_struct_vm_mm_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
 KModErr Test_get_vm_area_struct_vm_file_offset() {
     REQUIRE_ROOT_OR_RETURN();
     uint32_t offset = 0;
     RETURN_IF_ERROR(kernel_module::get_vm_area_struct_vm_file_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_inode_i_mode_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_inode_i_mode_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_inode_i_opflags_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_inode_i_opflags_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_inode_i_op_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_inode_i_op_offset(offset));
     printf("Output offset: 0x%x\n", offset);
     return KModErr::OK;
 }
@@ -298,11 +372,27 @@ KModErr Test_get_inode_i_bdev_offset() {
     return KModErr::OK;
 }
 
+KModErr Test_get_inode_operations_permission_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_inode_operations_permission_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
 KModErr Test_get_super_block_s_uuid_offset() {
     REQUIRE_ROOT_OR_RETURN();
-    uint32_t s_uuid_offset = 0;
-    RETURN_IF_ERROR(kernel_module::get_super_block_s_uuid_offset(s_uuid_offset));
-    printf("Output s_uuid_offset: 0x%x\n", s_uuid_offset);
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_super_block_s_uuid_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_super_block_s_dev_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_super_block_s_dev_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
     return KModErr::OK;
 }
 
@@ -348,6 +438,30 @@ KModErr Test_get_miscdevice_offsets() {
     return KModErr::OK;
 }
 
+KModErr Test_get_seq_file_buf_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_seq_file_buf_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_seq_file_size_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_seq_file_size_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_seq_file_count_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_seq_file_count_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
 KModErr Test_get_renamedata_old_dir_offset() {
     REQUIRE_ROOT_OR_RETURN();
     uint32_t offset = 0;
@@ -360,6 +474,46 @@ KModErr Test_get_address_space_host_offset() {
     REQUIRE_ROOT_OR_RETURN();
     uint32_t offset = 0;
     RETURN_IF_ERROR(kernel_module::get_address_space_host_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_address_space_i_mmap_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_address_space_i_mmap_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_block_device_bd_part_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_block_device_bd_part_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_block_device_bd_disk_offset() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_block_device_bd_disk_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_gendisk_part0_offset1() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_gendisk_part0_ptr_offset(offset));
+    printf("Output offset: 0x%x\n", offset);
+    return KModErr::OK;
+}
+
+KModErr Test_get_gendisk_part0_offset2() {
+    REQUIRE_ROOT_OR_RETURN();
+    uint32_t offset = 0;
+    RETURN_IF_ERROR(kernel_module::get_gendisk_part0_offset(offset));
     printf("Output offset: 0x%x\n", offset);
     return KModErr::OK;
 }
