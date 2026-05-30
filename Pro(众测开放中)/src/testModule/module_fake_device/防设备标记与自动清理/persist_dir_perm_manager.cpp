@@ -4,7 +4,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/mount.h>
+#include <sys/xattr.h>
+#include <sys/sysmacros.h>
 
+#include "patch_selinux_inode_permission.h"
 #include "fd_guard.h"
 #include "kernel_struct_path_helper.h"
 #include "process_utils.h"
@@ -12,6 +17,7 @@
 using namespace asmjit;
 using namespace asmjit::a64;
 using namespace asmjit::a64::Predicate;
+
 
 #define	EACCES		13	/* Permission denied */
 
@@ -21,37 +27,63 @@ using namespace asmjit::a64::Predicate;
 #define IOP_XATTR	0x0008
 #define IOP_DEFAULT_READLINK	0x0010
 
+#define KERNEL_MINORBITS 20
+#define KERNEL_MINORMASK ((1u << KERNEL_MINORBITS) - 1)
+
 namespace {
-void emit_check_current_comm_name_to_x10(Assembler* a, uint32_t comm_offset, const std::string& comm_name) {
-	uint64_t comm_name_arr[2] = {0};
-	size_t copy_len = std::min(comm_name.length(), (size_t)(MY_TASK_COMM_LEN - 1));
-	memcpy(comm_name_arr, comm_name.c_str(), copy_len);
-	
-	Label label_end = a->newLabel();
-
-	a->mov(x10, Imm(0));
-	kernel_module::export_symbol::get_current(a, x11);
-	a->cbz(x11, label_end);
-
-	// 比较下进程名，放行白名单进程名。
-	aarch64_asm_mov_w(a, w12, comm_offset);
-	a->add(x11, x11, x12); // 指针往后推
-	a->ldr(x12, ptr(x11, 0));
-	aarch64_asm_mov_x(a, x13, comm_name_arr[0]);
-	a->cmp(x12, x13);
-    a->b(CondCode::kNE, label_end);
-
-	a->ldr(x12, ptr(x11, 8));
-    aarch64_asm_mov_x(a, x13, comm_name_arr[1]);
-    a->cmp(x12, x13);
-    a->b(CondCode::kNE, label_end);
-	a->mov(x10, Imm(1));
-	a->bind(label_end);
+static uint32_t user_rdev_to_kernel_dev(dev_t rdev) {
+    uint32_t maj = major(rdev);
+    uint32_t min = minor(rdev);
+    return ((maj << KERNEL_MINORBITS) | (min & KERNEL_MINORMASK));
 }
 
 } // namespace
 
-std::vector<uint8_t> PersistDirPermManager::generate_permission_fn_bytes(uint64_t control_kaddr, uint32_t permission_kcfi, uint32_t comm_offset, const std::string& test_comm_name) {
+KModErr PersistDirPermManager::patch_inode_permission_func(uint64_t control_kaddr, const std::string& test_comm) {
+    uint64_t selinux_inode_permission = 0;
+    RETURN_IF_ERROR(kernel_module::kallsyms_lookup_name("selinux_inode_permission", selinux_inode_permission));
+    printf("selinux_inode_permission addr: %p\n", (void*)selinux_inode_permission);
+
+    InodePatchOffsets off = {};
+    RETURN_IF_ERROR(kernel_module::get_task_struct_comm_offset(off.comm_offset));
+    
+    RETURN_IF_ERROR(kernel_module::get_inode_i_ino_offset(off.inode_i_ino));
+    printf("i_ino offset: 0x%x\n", off.inode_i_ino);
+
+    RETURN_IF_ERROR(kernel_module::get_inode_i_sb_offset(off.inode_i_sb));
+    printf("i_sb offset: 0x%x\n", off.inode_i_sb);
+
+    RETURN_IF_ERROR(kernel_module::get_super_block_s_dev_offset(off.super_block_s_dev));
+    printf("s_dev offset: 0x%x\n", off.super_block_s_dev);
+
+    const char* persist_dir = nullptr;
+    struct stat st;
+    for (const char* dir : kPersistDirs) {
+        if (::stat(dir, &st) == 0) {
+            persist_dir = dir;
+            break;
+        }
+        printf("stat failed: %s\n", dir);
+    }
+
+    if (!persist_dir) {
+        printf("stat all persist dirs failed\n");
+        return KModErr::ERR_MODULE_OPEN_DIR;
+    }
+    
+    printf("persist i_ino: %llu\n", (unsigned long long)st.st_ino);
+    printf("persist s_dev: %llu\n", (unsigned long long)st.st_dev); 
+
+    PatchBase patchBase;
+    PatchSelinuxInodePermission p(patchBase, selinux_inode_permission);
+    KModErr err = p.patch_selinux_inode_permission(st.st_ino, user_rdev_to_kernel_dev(st.st_dev), control_kaddr, test_comm, off);
+    printf("patch selinux_inode_permission addr: %p ret: %s\n", (void*)selinux_inode_permission, to_string(err).c_str());
+    RETURN_IF_ERROR(err);
+    
+    return KModErr::OK;
+}
+
+std::vector<uint8_t> PersistDirPermManager::generate_permission_fn_bytes(uint64_t control_kaddr, uint32_t permission_kcfi, uint32_t comm_offset, const std::string& test_comm) {
     aarch64_asm_ctx asm_ctx = init_aarch64_asm();
     auto a = asm_ctx.assembler();
     Label L_denied = a->newLabel();
@@ -62,7 +94,7 @@ std::vector<uint8_t> PersistDirPermManager::generate_permission_fn_bytes(uint64_
     a->ldrb(w10, ptr(x10));
     a->cbnz(w10, L_denied);
     
-    emit_check_current_comm_name_to_x10(a, comm_offset, test_comm_name);
+    PatchBase::emit_check_current_comm_name_to_x10(a, comm_offset, test_comm);
 	a->cbnz(x10, L_denied); // 测试程序，主动拦截。
 
     a->mov(x0, xzr);
@@ -74,16 +106,14 @@ std::vector<uint8_t> PersistDirPermManager::generate_permission_fn_bytes(uint64_
     return aarch64_asm_to_bytes(a);
 }
 
-KModErr PersistDirPermManager::patch_kernel_handler(uint64_t control_kaddr) {
-    std::string new_comm = process_utils::reset_random_process_name();
+KModErr PersistDirPermManager::patch_inode_op_permission(uint64_t control_kaddr, const std::string& test_comm) {
     uint32_t comm_offset = 0;
     RETURN_IF_ERROR(kernel_module::get_task_struct_comm_offset(comm_offset));
-    printf("comm offset: 0x%x\n", comm_offset);
     
     uint32_t permission_kcfi = 0;
     RETURN_IF_ERROR(kernel_module::get_inode_operations_permission_kcfi_hash(permission_kcfi));
 
-    std::vector<uint8_t> permission_fn_bytes = generate_permission_fn_bytes(control_kaddr, permission_kcfi, comm_offset, new_comm);
+    std::vector<uint8_t> permission_fn_bytes = generate_permission_fn_bytes(control_kaddr, permission_kcfi, comm_offset, test_comm);
     uint64_t permission_fn_head_kaddr = 0;
     uint64_t permission_fn_entry_kaddr = 0;
     RETURN_IF_ERROR(kernel_module::alloc_kernel_mem(permission_fn_bytes.size(), permission_fn_head_kaddr));
@@ -152,11 +182,16 @@ KModErr PersistDirPermManager::patch_kernel_handler(uint64_t control_kaddr) {
     RETURN_IF_ERROR(kernel_module::write_kernel_mem(inode_ptr + i_opflags_offset, &i_opflags, sizeof(i_opflags)));
     printf("i_opflags after: 0x%x\n", i_opflags);
 
-    if (!verify_persist_not_open(persist_dir)) {
-        printf("verify failed: persist dir still openable\n");
-        return KModErr::ERR_MODULE_OPEN_DIR;
-    }
-    printf("verify persist dir: success\n");
+    return KModErr::OK;
+}
+
+KModErr PersistDirPermManager::patch_kernel_handler(uint64_t control_kaddr, const std::string& test_comm) {
+    KModErr err = patch_inode_permission_func(control_kaddr, test_comm);
+    printf("patch_inode_permission_func ret: %s\n", to_string(err).c_str());
+    RETURN_IF_ERROR(err);
+    err = patch_inode_op_permission(control_kaddr, test_comm);
+    printf("patch_inode_op_permission ret: %s\n", to_string(err).c_str());
+    // RETURN_IF_ERROR(err);
     return KModErr::OK;
 }
 
@@ -173,23 +208,23 @@ bool PersistDirPermManager::init() {
         printf("PersistDirPermManager already initialized, control_kaddr=%lx\n", m_control_kaddr);
         return true;
     }
-
-    m_control_kaddr = alloc_control_kaddr();
-    if (!m_control_kaddr) {
+    uint64_t control_kaddr = alloc_control_kaddr();
+    if (!control_kaddr) {
         printf("alloc control kaddr failed\n");
         return false;
     }
-
-    KModErr err = patch_kernel_handler(m_control_kaddr);
-    printf("patch_kernel_handler ret: %s\n", to_string(err).c_str());
-
-    if (!is_ok(err)) {
+    std::string new_comm = process_utils::reset_random_process_name();
+    if (is_failed(patch_kernel_handler(control_kaddr, new_comm))) {
         printf("patch_kernel_handler failed\n");
         // kernel_module::free_kernel_mem(m_control_kaddr);
-        m_control_kaddr = 0;
         return false;
     }
-
+    if (!verify_persist_not_open()) {
+        printf("verify failed: persist dir still openable\n");
+        return false;
+    }
+    printf("verify persist dir: success\n");
+    m_control_kaddr = control_kaddr;
     return true;
 }
 
@@ -216,7 +251,20 @@ bool PersistDirPermManager::set_locked(bool locked) {
     return true;
 }
 
-bool PersistDirPermManager::verify_persist_not_open(const char* persist_dir) {
+bool PersistDirPermManager::verify_persist_not_open() {
+    const char* persist_dir = nullptr;
+    struct stat st;
+    for (const char* dir : kPersistDirs) {
+        if (::stat(dir, &st) == 0) {
+            persist_dir = dir;
+            break;
+        }
+    }
+    if (!persist_dir) {
+        printf("persist dir is nullptr\n");
+        return false;
+    }
+
     errno = 0;
     int fd = open(persist_dir, O_RDONLY | O_CLOEXEC);
     if (fd >= 0) {
