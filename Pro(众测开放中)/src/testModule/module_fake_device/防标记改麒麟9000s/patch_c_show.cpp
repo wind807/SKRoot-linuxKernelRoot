@@ -1,5 +1,4 @@
-﻿#include "patch_selinux_inode_permission.h"
-#include <vector>
+﻿#include "patch_c_show.h"
 using namespace asmjit;
 using namespace asmjit::a64;
 using namespace asmjit::a64::Predicate;
@@ -35,14 +34,50 @@ android版本的差异内核源码浏览：
  https://android.googlesource.com/kernel/common/
 */
 
-#define	EACCES		13	/* Permission denied */
+PatchCShow::PatchCShow(const PatchBase& patch_base, uint64_t c_show) : PatchBase(patch_base), m_c_show(c_show) {}
 
-PatchSelinuxInodePermission::PatchSelinuxInodePermission(const PatchBase& patch_base, uint64_t selinux_inode_permission) : PatchBase(patch_base), m_selinux_inode_permission(selinux_inode_permission) {}
+PatchCShow::~PatchCShow() {}
 
-PatchSelinuxInodePermission::~PatchSelinuxInodePermission() {}
+static std::vector<std::string> split_lines_keep_empty(const std::string& text) {
+	std::vector<std::string> lines;
+	std::string cur;
 
-KModErr PatchSelinuxInodePermission::patch_selinux_inode_permission(uint64_t target_i_ino, uint32_t target_s_dev, uint64_t control_kaddr, const std::string& test_comm, const InodePatchOffsets& off) {
-	GpX x0_inode = x0;
+	for (size_t i = 0; i < text.size(); ++i) {
+		char c = text[i];
+		if (c == '\r') continue;
+		if (c == '\n') {
+			// 保留中间空行，但忽略最后一个单独的结尾换行
+			if (!cur.empty() || i + 1 < text.size()) {
+				lines.emplace_back(std::move(cur));
+				cur.clear();
+			}
+		} else {
+			cur.push_back(c);
+		}
+	}
+	if (!cur.empty()) lines.emplace_back(std::move(cur));
+	return lines;
+}
+
+static std::string escape_seq_printf_format_line(const std::string& line) {
+	std::string out;
+	out.reserve(line.size() + 8);
+	for (char c : line) {
+		if (c == '%') {
+			out += "%%";
+		} else {
+			out += c;
+		}
+	}
+	out += '\n';
+	return out;
+}
+
+KModErr PatchCShow::patch_c_show(const std::string& fake_cpuinfo) {
+	KModErr err = KModErr::ERR_MODULE_ASM;
+	GpX x0_m = x0;
+
+	std::vector<std::string> lines = split_lines_keep_empty(fake_cpuinfo);
 
 	// 生成Hook func汇编命令
 	aarch64_asm_ctx asm_ctx = init_aarch64_asm();
@@ -52,40 +87,14 @@ KModErr PatchSelinuxInodePermission::patch_selinux_inode_permission(uint64_t tar
 
 	// 这里下面是内核态要运行的指令
 	kernel_module::arm64_before_hook_start(a);
-	
-    PatchBase::emit_check_current_comm_name_to_x10(a, off.comm_offset, test_comm);
-	a->cbnz(x10, L_force_check); // 测试程序，主动拦截。
 
-	aarch64_asm_mov_x(a, x10, control_kaddr);
-	a->ldrb(w10, ptr(x10));
-	a->cbz(w10, L_normal);
+	for (const auto& line : lines) {
+		std::string fmt = escape_seq_printf_format_line(line);
+		kernel_module::export_symbol::seq_printf(a, err, x0_m, fmt.c_str());
+		RETURN_IF_ERROR(err);
+	}
 
-	// check inode->i_ino
-	a->bind(L_force_check);
-	aarch64_asm_mov_x(a, x11, (uint64_t)off.inode_i_ino);
-	a->add(x11, x0_inode, x11);
-	a->ldr(x11, ptr(x11)); // ARM64 Linux内核里inode->i_ino是64位。
-
-	aarch64_asm_mov_x(a, x12, target_i_ino);
-	a->cmp(x11, x12);
-	a->b(CondCode::kNE, L_normal);
-
-	
-	// check inode->i_sb->s_dev
-	aarch64_asm_mov_x(a, x11, (uint64_t)off.inode_i_sb);
-	aarch64_asm_mov_x(a, x12, (uint64_t)off.super_block_s_dev);
-	a->add(x11, x0_inode, x11);
-	a->ldr(x11, ptr(x11));
-	a->add(x12, x11, x12);
-	a->ldr(w12, ptr(x12));
-	aarch64_asm_mov_w(a, w11, target_s_dev);
-	a->cmp(w11, w12);
-	a->b(CondCode::kNE, L_normal);
-	
-	a->mov(x0, Imm(-EACCES));
+	a->mov(x0, xzr);
 	kernel_module::arm64_before_hook_end(a, false); // 直接返回，不跳回原函数
-	
-	a->bind(L_normal);
-	kernel_module::arm64_before_hook_end(a, true); // 正常返回
-	return patch_kernel_before_hook(m_selinux_inode_permission, a);
+	return patch_kernel_before_hook(m_c_show, a);
 }
